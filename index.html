@@ -1,0 +1,1698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poker Night Pro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        /* --- Base Styles & Variables --- */
+        :root {
+            --color-background: #1A202C;
+            --color-surface: #047857;
+            --color-primary: #F59E0B;
+            --color-secondary: #065F46;
+            --color-text-primary: #F7FAFC;
+            --color-text-secondary: #A0AEC0;
+            --color-text-accent: #FCD34D;
+            --color-error: #E53E3E;
+            --color-success: #48BB78;
+            --color-input-control-bg: #059669;
+            --color-input-control-border: #F59E0B;
+            --color-input-text: #FFFFFF;
+            --color-header-bg: #064E3B;
+            --color-tab-bar-bg: #065F46;
+            --color-graph-grid: rgba(255, 255, 255, 0.1);
+            --color-graph-axis: rgba(255, 255, 255, 0.3);
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--color-background);
+            color: var(--color-text-primary);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- App Layout --- */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        header.app-header {
+            background-color: var(--color-header-bg);
+            padding: 16px 20px;
+            text-align: center;
+            border-bottom: 3px solid var(--color-primary);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .app-header-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--color-primary);
+            font-family: 'Playfair Display', serif;
+            letter-spacing: 0.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .navigation-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .tab-bar {
+            display: flex;
+            background-color: var(--color-tab-bar-bg);
+            border-bottom: 2px solid var(--color-primary);
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 14px 5px;
+            border: none;
+            background-color: transparent;
+            color: var(--color-text-secondary);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s, color 0.2s;
+            border-bottom: 3px solid transparent;
+            font-family: 'Inter', sans-serif;
+            letter-spacing: 0.3px;
+        }
+
+        .tab-button.active {
+            background-color: var(--color-primary);
+            color: var(--color-header-bg);
+            border-bottom-color: var(--color-primary);
+        }
+
+        .tab-content-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            background-color: var(--color-surface);
+        }
+
+        .tab-pane {
+            display: none;
+            padding: 24px;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        footer.app-footer {
+            padding: 15px 0;
+            background-color: var(--color-header-bg);
+            text-align: center;
+            border-top: 1px solid var(--color-primary);
+            color: var(--color-text-secondary);
+            font-size: 14px;
+        }
+
+        /* --- Common Components & Styles --- */
+        .screen-title {
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--color-text-accent);
+            text-align: center;
+            margin: 10px 0 25px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .section-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--color-text-accent);
+            margin-bottom: 20px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .sub-section-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--color-text-accent);
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sub-section-title-small {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--color-text-accent);
+            margin-top: 20px;
+            margin-bottom: 12px;
+        }
+
+        .label {
+            font-size: 18px;
+            color: var(--color-text-accent);
+            margin-bottom: 12px;
+            font-weight: 600;
+            display: block;
+        }
+        
+        .info-text {
+            font-size: 16px;
+            color: var(--color-text-secondary);
+            text-align: center;
+            font-style: italic;
+            margin-top: 10px;
+            padding: 5px;
+        }
+
+        .error-message {
+            color: var(--color-error);
+            text-align: center;
+            margin: 20px 0;
+            font-size: 16px;
+            padding: 15px;
+            background-color: rgba(229, 62, 62, 0.1);
+            border-radius: 10px;
+            border: 1px solid var(--color-error);
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 24px;
+            background-color: var(--color-secondary);
+            border-radius: 16px;
+            border: 1px solid var(--color-input-control-border);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+        }
+
+        .sub-section {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .results-section {
+            margin-top: 30px;
+            padding-top: 25px;
+            border-top: 2px solid var(--color-primary);
+        }
+
+        .primary-button {
+            background-color: var(--color-primary);
+            color: var(--color-header-bg);
+            padding: 18px;
+            border-radius: 12px;
+            text-align: center;
+            margin-top: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 18px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease;
+        }
+        .primary-button:hover {
+            filter: brightness(1.1);
+        }
+        .primary-button:active {
+            transform: translateY(1px);
+        }
+
+        .secondary-button {
+            background-color: var(--color-input-control-bg);
+            color: var(--color-primary);
+            padding: 12px 18px;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 20px;
+            border: 1px solid var(--color-primary);
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .secondary-button:hover {
+            background-color: var(--color-secondary);
+        }
+        
+        /* --- Number Input Control --- */
+        .input-group {
+            margin-bottom: 20px;
+        }
+        .number-input-container {
+            display: flex;
+            align-items: center;
+            background-color: var(--color-input-control-bg);
+            border-radius: 12px;
+            border: 1px solid var(--color-input-control-border);
+            height: 52px;
+        }
+        .number-input-button {
+            background-color: var(--color-primary);
+            width: 52px;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: none;
+            cursor: pointer;
+            border-radius: 10px;
+            color: var(--color-header-bg);
+            font-size: 20px;
+        }
+        .number-input-button:disabled {
+            background-color: #a0aec0;
+            cursor: not-allowed;
+        }
+        .number-input {
+            flex: 1;
+            color: var(--color-input-text);
+            font-size: 18px;
+            padding: 0 10px;
+            height: 100%;
+            border: none;
+            background-color: transparent;
+            text-align: center;
+            box-sizing: border-box;
+            outline: none;
+            -moz-appearance: textfield; /* Firefox */
+        }
+        .number-input::-webkit-outer-spin-button,
+        .number-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        
+        /* --- Chip Display --- */
+        .chip-display {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            margin: 5px 0;
+        }
+        .chip-outer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+            position: relative;
+        }
+        .chip-inner-ring {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .chip-text-value {
+            font-weight: 700;
+            text-align: center;
+        }
+        .chip-count-text {
+            color: var(--color-text-primary);
+            font-size: 16px;
+            margin-left: 15px;
+            font-weight: 500;
+        }
+        
+        /* --- Chip Setup Screen --- */
+        .total-pot-display {
+            text-align: center;
+            padding: 18px 0;
+            background-color: var(--color-input-control-bg);
+            border-radius: 12px;
+            margin: 20px 0;
+            border: 1px solid var(--color-primary);
+        }
+        .total-pot-text {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--color-text-accent);
+        }
+        .total-pot-value {
+            color: var(--color-text-primary);
+            font-weight: 700;
+        }
+        .chip-adjustment-row {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            margin: 10px 0;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+        }
+        .setup-number-input-cell {
+            margin-left: 15px;
+        }
+        .summary-text {
+            font-size: 17px;
+            color: var(--color-text-primary);
+            margin-top: 10px;
+            font-weight: 600;
+        }
+        .blinds-suggestion-container {
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: var(--color-input-control-bg);
+            border-radius: 12px;
+            border: 1px solid var(--color-primary);
+        }
+        .blinds-display {
+            text-align: center;
+            padding: 10px;
+            border-radius: 10px;
+            margin-top: 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .blinds-text-small {
+            font-size: 18px;
+            color: var(--color-text-accent);
+            font-weight: 500;
+            margin: 4px 0 8px 0;
+        }
+        .blinds-text-big {
+            font-size: 22px;
+            color: var(--color-text-accent);
+            font-weight: 700;
+            margin: 4px 0;
+        }
+        .blind-amount-text {
+            color: var(--color-text-primary);
+            font-weight: bold;
+        }
+        .total-chips-needed-grid {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            align-items: flex-start;
+            padding: 10px 0;
+            background-color: var(--color-input-control-bg);
+            border-radius: 12px;
+            border: 1px solid var(--color-primary);
+            margin-top: 10px;
+        }
+        .total-chip-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 10px;
+            padding: 5px;
+            min-width: 100px;
+        }
+        .total-chip-count-text {
+            color: var(--color-text-primary);
+            font-size: 14px;
+            font-weight: 500;
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        /* --- Payouts Screen --- */
+        .payout-instructions-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: var(--color-secondary);
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .payout-instructions-text {
+            color: var(--color-text-accent);
+            font-size: 16px;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .player-entries-container {
+            margin: 20px 0;
+        }
+        .player-entry {
+            background-color: var(--color-secondary);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            border: 1px solid var(--color-primary);
+            box-shadow: 0 3px 7px rgba(0,0,0,0.1);
+        }
+        .player-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .player-name-input {
+            flex: 1;
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--color-text-accent);
+            padding-bottom: 6px;
+            margin-right: 15px;
+            background-color: transparent;
+            border: none;
+            border-bottom: 2px solid var(--color-primary);
+            outline: none;
+        }
+        .remove-player-button {
+            background-color: var(--color-error);
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            color: white;
+            font-size: 20px;
+        }
+        .chip-input-row-payout {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            margin: 10px 0;
+        }
+        .payout-number-input-cell {
+            margin-left: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .payout-value-text {
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--color-text-primary);
+            text-align: right;
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 1px solid var(--color-primary);
+        }
+        .sticky-footer-totals-section {
+            padding: 16px 20px 20px;
+            border-top: 2px solid var(--color-primary);
+            background-color: var(--color-surface);
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+            position: sticky;
+            bottom: 0;
+        }
+        .total-display-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 18px;
+            background-color: var(--color-input-control-bg);
+            border-radius: 10px;
+            margin-bottom: 12px;
+            border: 1px solid var(--color-primary);
+        }
+        .total-label-payout, .total-value-payout {
+            font-size: 19px;
+            font-weight: 600;
+        }
+        .total-label-payout { color: var(--color-text-accent); }
+        .total-value-payout { color: var(--color-text-primary); font-weight: bold;}
+        .finalize-button {
+            background-color: var(--color-success);
+            margin-top: 15px;
+        }
+
+        /* --- Poker Table Mock --- */
+        .table-visualization-section {
+            margin: 25px 0;
+            padding: 20px 0;
+            border-top: 1px solid rgba(245, 158, 11, 0.2);
+            border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+        }
+        .poker-table-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px 0;
+            position: relative;
+        }
+        .poker-table {
+            background-color: #047857;
+            border-radius: 110px / 65px;
+            border: 10px solid #065F46;
+            position: relative;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+            margin: 0 auto;
+        }
+        .poker-table-inner-line {
+            position: absolute;
+            width: calc(100% - 45px);
+            height: calc(100% - 45px);
+            border-radius: 85px / 45px;
+            border: 2px dashed var(--color-primary);
+            top: 22.5px;
+            left: 22.5px;
+            box-sizing: border-box;
+        }
+        .player-seat {
+            background-color: var(--color-primary);
+            position: absolute;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 2px solid var(--color-header-bg);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            cursor: pointer;
+            overflow: hidden;
+            color: var(--color-header-bg);
+            font-size: 11px;
+            font-weight: bold;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        /* --- History & Stats Screen --- */
+        .history-empty-state, .player-selector-container, .player-stats-card, .history-session-card {
+            background-color: var(--color-secondary);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid var(--color-primary);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .history-empty-state { text-align: center; }
+        .player-select-dropdown {
+            width: 100%;
+            padding: 12px 15px;
+            font-size: 16px;
+            background-color: var(--color-input-control-bg);
+            color: var(--color-text-primary);
+            border: 1px solid var(--color-primary);
+            border-radius: 8px;
+            margin-top: 8px;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23FCD34D'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd' /%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            background-size: 1.2em;
+        }
+        .player-stats-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--color-text-accent);
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid rgba(245, 158, 11, 0.3);
+            padding-bottom: 15px;
+        }
+        .player-stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--color-graph-grid);
+        }
+        .player-stat-label, .player-stat-value { font-size: 16px; }
+        .player-stat-label { color: var(--color-text-secondary); }
+        .player-stat-value { color: var(--color-text-primary); font-weight: 600; }
+        .player-stats-subtitle {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--color-text-accent);
+            margin-top: 30px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .player-session-log-container { margin-top: 10px; }
+        .player-session-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 10px;
+            border-bottom: 1px solid var(--color-graph-grid);
+        }
+        .player-session-date { font-size: 15px; color: var(--color-text-secondary); }
+        .player-session-net { font-size: 16px; font-weight: 600; }
+        .history-session-timestamp {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--color-text-accent);
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(245, 158, 11, 0.3);
+            padding-bottom: 10px;
+        }
+        .history-summary-text { font-size: 16px; margin-bottom: 5px; }
+        .history-summary-value { font-weight: 600; }
+        .history-player-list-title { font-size: 17px; font-weight: 600; color: var(--color-text-accent); margin: 10px 0; }
+        .history-player-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(74, 85, 104, 0.3);
+        }
+        .history-player-name { font-size: 16px; }
+        .history-player-net { font-size: 16px; font-weight: bold; }
+        .history-player-net-positive { color: var(--color-success); }
+        .history-player-net-negative { color: var(--color-error); }
+        .history-denominations-title { font-size: 16px; font-weight: 600; color: var(--color-text-accent); margin-top: 15px; margin-bottom: 8px; }
+        .history-denominations-container { display: flex; flex-wrap: wrap; gap: 8px; }
+
+        .graph-container {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: rgba(6, 78, 59, 0.6);
+            border-radius: 12px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .info-text-graph { font-size: 14px; color: var(--color-text-secondary); text-align: center; font-style: italic; padding: 20px; }
+
+        /* Custom Alert */
+        .custom-alert {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 10000;
+            font-family: sans-serif;
+            border-left: 5px solid var(--color-primary);
+            max-width: 90%;
+            text-align: center;
+        }
+
+        /* Ionicon Mock */
+        .icon {
+            font-family: 'Arial', sans-serif;
+            vertical-align: middle;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="app-container">
+        <header class="app-header">
+            <h1 class="app-header-title">
+                Poker Night Pro <span class="icon" data-name="logo-react"></span>
+            </h1>
+        </header>
+
+        <nav class="navigation-container">
+            <div class="tab-bar">
+                <button class="tab-button active" data-tab="chip-setup">Chip Setup</button>
+                <button class="tab-button" data-tab="payouts">Payouts</button>
+                <button class="tab-button" data-tab="history">History & Stats</button>
+            </div>
+            <div class="tab-content-container">
+                <div id="chip-setup" class="tab-pane active">
+                    <!-- Chip Setup content will be injected here -->
+                </div>
+                <div id="payouts" class="tab-pane">
+                    <!-- Payouts content will be injected here -->
+                </div>
+                <div id="history" class="tab-pane">
+                    <!-- History & Stats content will be injected here -->
+                </div>
+            </div>
+        </nav>
+
+        <footer class="app-footer">
+            <p id="footer-text">May the flop be with you!</p>
+        </footer>
+    </div>
+    
+    <script>
+        // --- GLOBAL STATE ---
+        let AppState = {
+            activeTab: 'chip-setup',
+            activeDenominations: [],
+            playerStackTemplate: {},
+            numPlayers: '5',
+            buyIn: '100',
+            players: [], // For payouts screen
+            nextPlayerId: 0,
+            sessionHistory: [],
+            playerStats: {}
+        };
+
+        // --- MOCK ASYNCSTORAGE (localStorage) ---
+        const AsyncStorage = {
+            setItem: async (key, value) => localStorage.setItem(key, value),
+            getItem: async (key) => localStorage.getItem(key),
+            removeItem: async (key) => localStorage.removeItem(key),
+        };
+
+        // --- CONSTANTS ---
+        const orderedChipColors = [
+            { name: 'White', bg: '#FFFFFF', text: '#1F2937', border: '#D1D5DB', innerRing: '#F3F4F6' },
+            { name: 'Red', bg: '#EF4444', text: '#FFFFFF', border: '#B91C1C', innerRing: '#FCA5A5' },
+            { name: 'Green', bg: '#22C55E', text: '#FFFFFF', border: '#15803D', innerRing: '#4ADE80' },
+            { name: 'Blue', bg: '#3B82F6', text: '#FFFFFF', border: '#1D4ED8', innerRing: '#60A5FA' },
+            { name: 'Orange', bg: '#F97316', text: '#FFFFFF', border: '#C2410C', innerRing: '#FB923C' },
+            { name: 'Black', bg: '#1F2937', text: '#F3F4F6', border: '#000000', innerRing: '#374151' },
+            { name: 'Purple', bg: '#8B5CF6', text: '#FFFFFF', border: '#6D28D9', innerRing: '#A78BFA' },
+            { name: 'Pink', bg: '#EC4899', text: '#FFFFFF', border: '#DB2777', innerRing: '#F9A8D4' },
+            { name: 'Yellow', bg: '#FDE047', text: '#422006', border: '#D97706', innerRing: '#FEF3C7' },
+            { name: 'Teal', bg: '#10B981', text: '#FFFFFF', border: '#047857', innerRing: '#6EE7B7' }
+        ];
+        const defaultChipColor = { bg: '#9CA3AF', text: '#1F2937', border: '#4B5563', innerRing: '#6B7280' };
+
+        // --- UTILITY FUNCTIONS ---
+        function showAlert(title, message) {
+            const alertEl = document.createElement('div');
+            alertEl.className = 'custom-alert';
+            alertEl.innerHTML = `<strong>${title}</strong><br>${message.replace(/\n/g, '<br>')}`;
+            document.body.appendChild(alertEl);
+            setTimeout(() => alertEl.remove(), 5000);
+        }
+
+        function getIcon(name) {
+            const iconMap = {
+                'remove-circle-outline': '－', 'add-circle-outline': '＋', 'add-circle': '＋',
+                'layers-outline': '☰', 'layers': '☰', 'cash-outline': '💲', 'cash': '💲',
+                'heart-outline': '♥', 'heart': '♥', 'spade-outline': '♠', 'spade': '♠',
+                'tablet-landscape-outline': '▭', 'tablet-landscape': '▭',
+                'trash-bin-outline': '🗑️', 'trash-bin': '🗑️', 'save-outline': '✔', 'save': '✔',
+                'alert-circle-outline': '⚠️', 'logo-react': '⚛️', 'stats-chart': '📈',
+                'person-circle-outline': '👤'
+            };
+            return `<span class="icon" data-name="${name}">${iconMap[name] || name.substring(0,3).toUpperCase()}</span>`;
+        }
+
+        // --- RENDER FUNCTIONS ---
+        // These functions build HTML strings for different parts of the UI
+        
+        function renderNumberInput({ id, label, value, step = 1, min = 0, max, onValueChange, onIncrement, onDecrement, inputGroupStyleOverride = '' }) {
+            const numericValue = parseFloat(value);
+            const isMinDisabled = !isNaN(numericValue) && numericValue <= min;
+            const isMaxDisabled = max !== undefined && !isNaN(numericValue) && numericValue >= max;
+            
+            return `
+                <div class="input-group" style="${inputGroupStyleOverride}">
+                    ${label ? `<label for="${id}" class="label">${label}</label>` : ''}
+                    <div class="number-input-container">
+                        <button class="number-input-button" id="decrement-${id}" ${isMinDisabled ? 'disabled' : ''}>${getIcon('remove-circle-outline')}</button>
+                        <input type="number" class="number-input" id="${id}" value="${value}" min="${min}" ${max !== undefined ? `max="${max}"` : ''} step="${step}">
+                        <button class="number-input-button" id="increment-${id}" ${isMaxDisabled ? 'disabled' : ''}>${getIcon('add-circle-outline')}</button>
+                    </div>
+                </div>`;
+        }
+
+        function renderChipDisplay({ value, count, size = 'large', activeDenominations }) {
+            let chipData = defaultChipColor;
+            if (activeDenominations && activeDenominations.length > 0) {
+                const chipIndex = activeDenominations.indexOf(value);
+                if (chipIndex !== -1) {
+                    chipData = orderedChipColors[chipIndex % orderedChipColors.length];
+                }
+            }
+
+            let chipSize, innerRingSize, borderThickness, textSize;
+            if (size === 'small') {
+                chipSize = 44; innerRingSize = chipSize * 0.6; borderThickness = 2; textSize = '10px';
+            } else {
+                chipSize = 80; innerRingSize = chipSize * 0.68; borderThickness = 3; textSize = '18px';
+            }
+
+            const formattedValue = value % 1 === 0 ? value : value.toFixed(2);
+
+            return `
+                <div class="chip-display">
+                    <div class="chip-outer" style="background-color: ${chipData.bg}; border: ${borderThickness}px solid ${chipData.border}; width: ${chipSize}px; height: ${chipSize}px; border-radius: ${chipSize / 2}px;">
+                        <div class="chip-inner-ring" style="background-color: ${chipData.innerRing}; width: ${innerRingSize}px; height: ${innerRingSize}px; border-radius: ${innerRingSize / 2}px;">
+                            <span class="chip-text-value" style="color: ${chipData.text}; font-size: ${textSize};">$${formattedValue}</span>
+                        </div>
+                    </div>
+                    ${count !== undefined ? `<span class="chip-count-text">${count} chips</span>` : ''}
+                </div>`;
+        }
+        
+        function renderPokerTable(players = []) {
+            const containerWidth = document.getElementById('payouts')?.clientWidth || 350;
+            const tableWidth = Math.min(containerWidth * 0.85, 450);
+            const tableHeight = tableWidth / 1.8;
+            const seatSize = Math.max(30, tableWidth / 12);
+            const numPlayers = players.length;
+
+            const getPlayerPosition = (index, count) => {
+                if (count === 0) return { top: '50%', left: '50%' };
+                let angleOffset = (count > 0 && count % 2 === 0) ? Math.PI / count : 0;
+                const angle = (index / count) * 2 * Math.PI - (Math.PI / 2) + angleOffset;
+                const xRadius = (tableWidth / 2) - (seatSize / 2) - 10;
+                const yRadius = (tableHeight / 2) - (seatSize / 2) - 10;
+                const left = (tableWidth / 2) + xRadius * Math.cos(angle) - (seatSize / 2);
+                const top = (tableHeight / 2) + yRadius * Math.sin(angle) - (seatSize / 2);
+                return `top: ${top}px; left: ${left}px;`;
+            };
+
+            let seatsHTML = players.map((player, index) => `
+                <div class="player-seat" data-player-id="${player.id}" style="${getPlayerPosition(index, numPlayers)} width: ${seatSize}px; height: ${seatSize}px; border-radius: ${seatSize/2}px;">
+                    ${player.name ? player.name.substring(0, 3) : `P${index+1}`}
+                </div>
+            `).join('');
+
+            return `
+                <div class="poker-table-container">
+                    <div class="poker-table" style="width: ${tableWidth}px; height: ${tableHeight}px;">
+                        <div class="poker-table-inner-line"></div>
+                        ${seatsHTML}
+                    </div>
+                </div>`;
+        }
+
+        function renderSimpleLineGraph({ data, selectedPlayer }) {
+             if (!data || data.length < 2) {
+                return `<div class="info-text-graph">Not enough data to display graph.</div>`;
+            }
+            const gradientId = `lineGraphGradient-${selectedPlayer ? selectedPlayer.replace(/\s+/g, '-') : 'all'}`;
+            const padding = { top: 20, right: 20, bottom: 40, left: 45 };
+            const svgWidth = 350;
+            const svgHeight = 200;
+            const chartWidth = svgWidth - padding.left - padding.right;
+            const chartHeight = svgHeight - padding.top - padding.bottom;
+
+            const values = data.map(d => d.y);
+            let minY = Math.min(...values);
+            let maxY = Math.max(...values);
+            if (minY !== 0) minY -= Math.abs(minY * 0.1) || 5;
+            if (maxY !== 0) maxY += Math.abs(maxY * 0.1) || 5;
+            if (minY === maxY) { minY -= 5; maxY += 5; }
+            
+            const rangeY = maxY - minY;
+            const scaleY = rangeY === 0 ? chartHeight / 2 : chartHeight / rangeY;
+            const scaleX = chartWidth / (data.length - 1);
+
+            const points = data.map((point, i) => `${i * scaleX},${chartHeight - (point.y - minY) * scaleY}`).join(' ');
+            const areaPoints = `0,${chartHeight} ${points} ${chartWidth},${chartHeight}`;
+
+            const numYLabels = 5;
+            let yAxisLabelsHTML = '';
+            if (rangeY > 0) {
+                for (let i = 0; i <= numYLabels; i++) {
+                    const value = minY + (rangeY / numYLabels) * i;
+                    const yPos = chartHeight - (value - minY) * scaleY;
+                    yAxisLabelsHTML += `
+                        <line key="grid-y-${i}" x1="0" y1="${yPos}" x2="${chartWidth}" y2="${yPos}" stroke="var(--color-graph-grid)" stroke-width="0.5" stroke-dasharray="3,3" />
+                        <text key="y-label-${i}" x="-8" y="${yPos + 4}" fill="var(--color-text-secondary)" font-size="10" text-anchor="end">
+                            $${Math.round(value)}
+                        </text>`;
+                }
+            }
+
+            const formatDateLabel = (timestamp) => {
+                const date = new Date(timestamp);
+                return `${date.getMonth() + 1}/${date.getDate()}`;
+            };
+            
+            let xAxisLabelsHTML = '';
+            data.forEach((point, i) => {
+                let showLabel = true;
+                if (data.length > 7) {
+                    const showNth = Math.ceil(data.length / 5);
+                    if (i !== 0 && i !== data.length - 1 && i % showNth !== 0) {
+                        showLabel = false;
+                    }
+                }
+                if (showLabel) {
+                     xAxisLabelsHTML += `<text key="x-label-${i}" x="${i * scaleX}" y="${chartHeight + 20}" fill="var(--color-text-secondary)" font-size="10" text-anchor="middle">${formatDateLabel(point.sessionTimestamp)}</text>`;
+                }
+            });
+
+
+            return `
+                <div class="graph-container">
+                    <svg width="100%" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}">
+                        <defs>
+                            <linearGradient id="${gradientId}" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" style="stop-color:var(--color-primary); stop-opacity: 0.5" />
+                                <stop offset="100%" style="stop-color:var(--color-primary); stop-opacity: 0.05" />
+                            </linearGradient>
+                        </defs>
+                        <g transform="translate(${padding.left}, ${padding.top})">
+                            ${yAxisLabelsHTML}
+                            <line x1="0" y1="0" x2="0" y2="${chartHeight}" stroke="var(--color-graph-axis)" stroke-width="1" />
+                            <line x1="0" y1="${chartHeight}" x2="${chartWidth}" y2="${chartHeight}" stroke="var(--color-graph-axis)" stroke-width="1" />
+                             ${xAxisLabelsHTML}
+                            <polygon points="${areaPoints}" fill="url(#${gradientId})" />
+                            <polyline fill="none" stroke="var(--color-primary)" stroke-width="2.5" points="${points}" stroke-linecap="round" stroke-linejoin="round" />
+                            ${data.map((point, i) => `<circle cx="${i * scaleX}" cy="${chartHeight - (point.y - minY) * scaleY}" r="4" fill="var(--color-surface)" stroke="var(--color-primary)" stroke-width="2" />`).join('')}
+                        </g>
+                    </svg>
+                </div>`;
+        }
+
+        // --- Core Application Logic ---
+        
+        // Chip Setup Logic
+        const ChipSetup = {
+            state: {
+                numPlayers: AppState.numPlayers,
+                buyInAmount: AppState.buyIn,
+                totalPot: 0,
+                activeDenominations: [],
+                editablePlayerStack: {},
+                totalPlayerChips: 0,
+                totalPlayerValue: 0,
+                totalChipsNeeded: {},
+                blindsSuggestion: { small: 0, big: 0 },
+                showResults: false,
+                errorMessage: ''
+            },
+            
+            getDenominationsToUse(buyInVal) {
+                const stdChips = [0.25, 0.50, 1, 5, 10, 25, 50, 100, 500, 1000];
+                if (buyInVal <= 0 || stdChips.length === 0) return [];
+                const target_C2_value = buyInVal / 10;
+                let C2_index = -1; let min_diff = Infinity;
+                for (let i = 0; i < stdChips.length; i++) {
+                    const diff = Math.abs(stdChips[i] - target_C2_value);
+                    if (diff < min_diff) { min_diff = diff; C2_index = i; }
+                    else if (diff === min_diff && stdChips[i] < stdChips[C2_index]) C2_index = i;
+                }
+                if (C2_index === -1) C2_index = 0;
+                let final_C1, final_C2, final_C3;
+                if (stdChips.length < 3) return stdChips.sort((a,b) => a-b);
+                if (C2_index === 0) {
+                    final_C1 = stdChips[0]; final_C2 = stdChips.length > 1 ? stdChips[1] : undefined; final_C3 = stdChips.length > 2 ? stdChips[2] : undefined;
+                } else if (C2_index === stdChips.length - 1) {
+                    final_C3 = stdChips[stdChips.length - 1]; final_C2 = stdChips.length > 1 ? stdChips[stdChips.length - 2] : undefined; final_C1 = stdChips.length > 2 ? stdChips[stdChips.length - 3] : undefined;
+                } else {
+                    final_C1 = stdChips[C2_index - 1]; final_C2 = stdChips[C2_index]; final_C3 = stdChips[C2_index + 1];
+                }
+                return [final_C1, final_C2, final_C3].filter(d => d !== undefined && d !== null).sort((a, b) => a - b);
+            },
+
+            calculateDefaultPlayerStack(targetBuyIn, denoms) {
+                const n = denoms.length;
+                if (n === 0 || targetBuyIn <= 0) return {};
+                let stack = {}; denoms.forEach(d => stack[d] = 0);
+                let tempBuyIn = targetBuyIn; let countsArray = new Array(n).fill(0);
+                const minChipTargets = [10, 8];
+                for (let i = 0; i < n - 1; i++) {
+                    if (tempBuyIn <= 0 || denoms[i] <= 0) continue;
+                    let num_di = minChipTargets[i] || 1;
+                    if (denoms[i] * num_di > tempBuyIn * 0.75 && tempBuyIn > denoms[i]) {
+                        num_di = Math.floor(tempBuyIn * 0.25 / denoms[i]);
+                        num_di = Math.max(1, num_di);
+                    }
+                    num_di = Math.min(num_di, Math.floor(tempBuyIn / denoms[i]));
+                    countsArray[i] = Math.max(0, num_di);
+                    tempBuyIn -= countsArray[i] * denoms[i];
+                }
+                if (n > 0 && tempBuyIn > 0 && denoms[n - 1] > 0) {
+                    countsArray[n - 1] += Math.floor(tempBuyIn / denoms[n - 1]);
+                    tempBuyIn -= Math.floor(tempBuyIn / denoms[n - 1]) * denoms[n - 1];
+                }
+                if (tempBuyIn > 0.001 && denoms[0] > 0 && n > 0) {
+                    countsArray[0] += Math.round(tempBuyIn / denoms[0]);
+                }
+                denoms.forEach((denom, index) => stack[denom] = Math.max(0, Math.round(countsArray[index])));
+                denoms.forEach(denom => { if (stack[denom] === 0) stack[denom] = 1; });
+                let currentValueAfterMins = denoms.reduce((sum, d) => sum + (stack[d] || 0) * d, 0);
+                let difference = targetBuyIn - currentValueAfterMins;
+                let attempts = 0;
+                while (Math.abs(difference) > 0.001 && attempts < 20) {
+                    attempts++; let adjusted = false;
+                    if (difference > 0) {
+                        const sortedDenomsAdd = [...denoms].sort((a, b) => a - b);
+                        for (const denom of sortedDenomsAdd) {
+                            if (difference >= denom) { stack[denom]++; difference -= denom; adjusted = true; break; }
+                        }
+                        if (!adjusted && difference > 0.001 && sortedDenomsAdd.length > 0) { stack[sortedDenomsAdd[0]]++; difference -= sortedDenomsAdd[0]; }
+                    } else {
+                        let excess = -difference;
+                        const sortedDenomsRemove = [...denoms].sort((a, b) => b - a);
+                        for (const denom of sortedDenomsRemove) {
+                            if (excess <= 0.001) break;
+                            if (stack[denom] > 1 && excess >= denom) { stack[denom]--; excess -= denom; adjusted = true; break; }
+                        }
+                        if (!adjusted && excess > 0.001 && sortedDenomsRemove.length > 0) {
+                            const smallestToRemove = sortedDenomsRemove[sortedDenomsRemove.length - 1];
+                            if(stack[smallestToRemove] > 1){ stack[smallestToRemove]--; excess -= smallestToRemove; }
+                        }
+                    }
+                    currentValueAfterMins = denoms.reduce((sum, d) => sum + (stack[d] || 0) * d, 0);
+                    difference = targetBuyIn - currentValueAfterMins;
+                    if (!adjusted && Math.abs(difference) < (denoms[0] || 0.01)) break;
+                }
+                denoms.forEach(denom => stack[denom] = Math.max(1, Math.round(stack[denom] || 1)));
+                let finalCalculatedValue = denoms.reduce((sum, d) => sum + (stack[d] || 0) * d, 0);
+                if (finalCalculatedValue > targetBuyIn + 0.001) {
+                    let excessToTrim = finalCalculatedValue - targetBuyIn;
+                    const sortedDenomsForTrimming = [...denoms].sort((a, b) => a - b);
+                    for (const denom of sortedDenomsForTrimming) {
+                        if (excessToTrim <= 0.001) break;
+                        while ((stack[denom] || 0) > 0 && excessToTrim >= denom) {
+                            if (stack[denom] > 1 || (stack[denom] === 1 && finalCalculatedValue - denom >= targetBuyIn - (denoms[0] || 0.01))) {
+                                stack[denom]--; excessToTrim -= denom; finalCalculatedValue -= denom;
+                            } else break;
+                        }
+                    }
+                }
+                denoms.forEach(denom => stack[denom] = Math.max(0, stack[denom]));
+                return stack;
+            },
+
+            updateOutputs() {
+                let currentTotalChips = 0; let currentTotalValue = 0; let currentSmallestDenom = -1;
+                const currentTotalChipsNeeded = {};
+                this.state.activeDenominations.forEach(denom => {
+                    const count = this.state.editablePlayerStack[denom] || 0;
+                    if (count > 0 && (currentSmallestDenom === -1 || denom < currentSmallestDenom)) currentSmallestDenom = denom;
+                    currentTotalChips += count;
+                    currentTotalValue += count * denom;
+                    const numPlayersVal = parseFloat(this.state.numPlayers);
+                    currentTotalChipsNeeded[denom] = numPlayersVal > 0 ? count * numPlayersVal : 0;
+                });
+                this.state.totalPlayerChips = currentTotalChips;
+                this.state.totalPlayerValue = currentTotalValue;
+                this.state.totalChipsNeeded = currentTotalChipsNeeded;
+                this.state.blindsSuggestion = currentSmallestDenom > 0 ? { small: currentSmallestDenom, big: currentSmallestDenom * 2 } : { small: 0, big: 0 };
+            },
+
+            performRedistribution(adjustedDenom, newCountInput) {
+                const targetBuyIn = parseFloat(this.state.buyInAmount);
+                if (isNaN(targetBuyIn) || targetBuyIn <= 0 || !this.state.activeDenominations || this.state.activeDenominations.length === 0) {
+                    this.state.editablePlayerStack[adjustedDenom] = Math.max(0, parseInt(String(newCountInput), 10) || 0);
+                    return;
+                }
+                let newCount = Math.max(0, parseInt(String(newCountInput), 10) || 0);
+                let workingStack = { ...this.state.editablePlayerStack };
+                workingStack[adjustedDenom] = newCount;
+                let iterations = 0;
+                while (iterations < 30) {
+                    iterations++;
+                    let currentValue = this.state.activeDenominations.reduce((sum, d) => sum + (workingStack[d] || 0) * d, 0);
+                    let differenceToTarget = targetBuyIn - currentValue;
+                    if (Math.abs(differenceToTarget) < 0.001) break;
+                    let changedThisLoop = false;
+                    if (differenceToTarget > 0) {
+                        const sortedDenomsAdd = [...this.state.activeDenominations].sort((a, b) => a - b);
+                        for (const denom of sortedDenomsAdd) {
+                            if (denom === adjustedDenom && differenceToTarget < denom) continue;
+                            if (differenceToTarget >= denom) {
+                                workingStack[denom] = (workingStack[denom] || 0) + 1;
+                                changedThisLoop = true; break;
+                            }
+                        }
+                        if (!changedThisLoop && differenceToTarget > 0.001 && sortedDenomsAdd.length > 0) {
+                            const smallestDenomAvailable = sortedDenomsAdd.find(d => d !== adjustedDenom) || sortedDenomsAdd[0];
+                            workingStack[smallestDenomAvailable] = (workingStack[smallestDenomAvailable] || 0) + 1;
+                            changedThisLoop = true;
+                        }
+                    } else {
+                        let excessToRemove = -differenceToTarget;
+                        const sortedDenomsRemove = [...this.state.activeDenominations].sort((a, b) => b - a);
+                        for (const denom of sortedDenomsRemove) {
+                            if (excessToRemove <= 0.001) break;
+                            if (denom === adjustedDenom && excessToRemove < denom) continue;
+                            if ((workingStack[denom] || 0) > 0) {
+                                workingStack[denom]--;
+                                excessToRemove -= denom;
+                                changedThisLoop = true; break;
+                            }
+                        }
+                    }
+                    if (!changedThisLoop) break;
+                }
+                this.state.editablePlayerStack = workingStack;
+                this.updateOutputs();
+                this.render();
+            },
+            
+            handleDefineChips() {
+                this.state.errorMessage = '';
+                const playersVal = parseFloat(this.state.numPlayers);
+                const buyInVal = parseFloat(this.state.buyInAmount);
+                if (isNaN(playersVal) || playersVal <= 0) {
+                    this.state.errorMessage = "Please enter a valid number of players.";
+                    this.state.showResults = false;
+                    this.render();
+                    return;
+                }
+                 if (isNaN(buyInVal) || buyInVal <= 0) {
+                    this.state.errorMessage = "Please enter a valid reference buy-in amount.";
+                    this.state.showResults = false;
+                    this.render();
+                    return;
+                }
+                const denoms = this.getDenominationsToUse(buyInVal);
+                if(denoms.length === 0){
+                    this.state.errorMessage = "Could not determine chip denominations. Try a different amount.";
+                    this.state.showResults = false;
+                    this.render();
+                    return;
+                }
+                this.state.activeDenominations = denoms;
+                this.state.editablePlayerStack = this.calculateDefaultPlayerStack(buyInVal, denoms);
+                this.state.showResults = true;
+                
+                // Update global state and auto-populate Payouts
+                AppState.activeDenominations = denoms;
+                AppState.playerStackTemplate = this.state.editablePlayerStack;
+                AppState.numPlayers = this.state.numPlayers;
+                AppState.buyIn = this.state.buyInAmount;
+                
+                const numPlayersToAutoAdd = parseInt(AppState.numPlayers, 10);
+                const defaultBuyInForAutoAdd = parseFloat(AppState.buyIn);
+                let autoAddedPlayers = [];
+                let nextId = 0;
+                if (!isNaN(numPlayersToAutoAdd) && numPlayersToAutoAdd > 0 && !isNaN(defaultBuyInForAutoAdd)) {
+                    for (let i = 0; i < numPlayersToAutoAdd; i++) {
+                        const newPlayerId = `payout_player_${nextId++}`;
+                        const initialChips = AppState.activeDenominations.reduce((acc, d) => {
+                            acc[d] = AppState.playerStackTemplate[d] !== undefined ? AppState.playerStackTemplate[d] : 0;
+                            return acc;
+                        }, {});
+                        const payoutValue = AppState.activeDenominations.reduce((total, d) => total + (initialChips[d] || 0) * d, 0);
+                        autoAddedPlayers.push({ id: newPlayerId, name: `Player ${i + 1}`, buyIn: String(defaultBuyInForAutoAdd.toFixed(2)), chips: initialChips, payoutValue: payoutValue });
+                    }
+                }
+                AppState.players = autoAddedPlayers;
+                AppState.nextPlayerId = nextId;
+
+                this.updateOutputs();
+                this.render();
+                Payouts.render(); // Re-render payouts tab with new players
+            },
+
+            render() {
+                const target = document.getElementById('chip-setup');
+                const totalPot = (parseFloat(this.state.numPlayers) || 0) * (parseFloat(this.state.buyInAmount) || 0);
+
+                let resultsHTML = '';
+                if(this.state.showResults){
+                    resultsHTML = `
+                    <div class="results-section">
+                        <h3 class="section-title">${getIcon('layers')} Chip Distribution ${getIcon('layers')}</h3>
+                        <div class="sub-section">
+                            <h4 class="sub-section-title">Adjustable Stack per Player:</h4>
+                            ${this.state.activeDenominations.map(denom => `
+                                <div class="chip-adjustment-row" data-denom="${denom}">
+                                    ${renderChipDisplay({ value: denom, activeDenominations: this.state.activeDenominations, style: {marginRight: '15px'} })}
+                                    <div class="setup-number-input-cell">
+                                        ${renderNumberInput({
+                                            id: `stack-chip-${denom}`,
+                                            value: this.state.editablePlayerStack[denom] !== undefined ? String(this.state.editablePlayerStack[denom]) : '0',
+                                            min: 0,
+                                            inputGroupStyleOverride: 'margin-bottom: 0;'
+                                        })}
+                                    </div>
+                                </div>
+                            `).join('')}
+                             <p class="summary-text">Total chips per player: ${this.state.totalPlayerChips}</p>
+                             <p class="summary-text">Total value per player: $${this.state.totalPlayerValue.toFixed(2)}</p>
+                        </div>
+                        <div class="sub-section blinds-suggestion-container">
+                             <h4 class="sub-section-title">${getIcon('heart')} Suggested Blinds ${getIcon('spade')}</h4>
+                             ${this.state.blindsSuggestion.small > 0 ? `
+                                 <div class="blinds-display">
+                                    <p class="blinds-text-small">Small Blind: <span class="blind-amount-text">$${this.state.blindsSuggestion.small.toFixed(2)}</span></p>
+                                    <p class="blinds-text-big">Big Blind: <span class="blind-amount-text">$${this.state.blindsSuggestion.big.toFixed(2)}</span></p>
+                                 </div>
+                             ` : `<p class="info-text">Not enough data for suggestion.</p>`}
+                        </div>
+                        <div class="sub-section">
+                            <h4 class="sub-section-title">Total Chips Needed:</h4>
+                             <div class="total-chips-needed-grid">
+                                ${this.state.activeDenominations.map(denom => {
+                                    const countNeeded = this.state.totalChipsNeeded[denom] || 0;
+                                    return countNeeded > 0 ? `
+                                        <div class="total-chip-item">
+                                            ${renderChipDisplay({ value: denom, size: 'small', activeDenominations: this.state.activeDenominations })}
+                                            <span class="total-chip-count-text">${countNeeded} chips</span>
+                                        </div>
+                                    ` : '';
+                                }).join('')}
+                                ${Object.values(this.state.totalChipsNeeded).every(c => c === 0) ? `<p class="info-text">Enter players to see totals.</p>` : ''}
+                            </div>
+                        </div>
+                    </div>`;
+                }
+
+                target.innerHTML = `
+                    <div class="section">
+                        ${renderNumberInput({
+                            id: 'num-players',
+                            label: 'Number of Players:',
+                            value: this.state.numPlayers,
+                            min: 1
+                        })}
+                        ${renderNumberInput({
+                            id: 'buy-in',
+                            label: 'Reference Buy-in: $',
+                            value: this.state.buyInAmount,
+                            step: 5,
+                            min: 1
+                        })}
+                        <div class="total-pot-display">
+                            <p class="total-pot-text">Reference Total Pot: <span class="total-pot-value">$${totalPot.toFixed(2)}</span></p>
+                        </div>
+                        <button class="primary-button" id="define-chips-btn">Define Chip Denominations & Stacks</button>
+                    </div>
+                    ${this.state.errorMessage ? `<div class="error-message">${this.state.errorMessage}</div>` : ''}
+                    ${resultsHTML}
+                `;
+                this.addEventListeners();
+            },
+            
+            addEventListeners(){
+                document.getElementById('num-players').addEventListener('change', (e) => { this.state.numPlayers = e.target.value; this.render(); });
+                document.getElementById('increment-num-players').addEventListener('click', () => { this.state.numPlayers = String(parseInt(this.state.numPlayers) + 1); this.render(); });
+                document.getElementById('decrement-num-players').addEventListener('click', () => { this.state.numPlayers = String(Math.max(1, parseInt(this.state.numPlayers) - 1)); this.render(); });
+
+                document.getElementById('buy-in').addEventListener('change', (e) => { this.state.buyInAmount = e.target.value; this.render(); });
+                document.getElementById('increment-buy-in').addEventListener('click', () => { this.state.buyInAmount = String(parseFloat(this.state.buyInAmount) + 5); this.render(); });
+                document.getElementById('decrement-buy-in').addEventListener('click', () => { this.state.buyInAmount = String(Math.max(1, parseFloat(this.state.buyInAmount) - 5)); this.render(); });
+                
+                document.getElementById('define-chips-btn').addEventListener('click', () => this.handleDefineChips());
+                
+                if(this.state.showResults) {
+                    this.state.activeDenominations.forEach(denom => {
+                        const inputId = `stack-chip-${denom}`;
+                        document.getElementById(inputId).addEventListener('change', (e) => {
+                             this.performRedistribution(denom, e.target.value);
+                        });
+                         document.getElementById(`increment-${inputId}`).addEventListener('click', () => {
+                            const current = parseInt(this.state.editablePlayerStack[denom] || 0);
+                            this.performRedistribution(denom, current + 1);
+                        });
+                        document.getElementById(`decrement-${inputId}`).addEventListener('click', () => {
+                            const current = parseInt(this.state.editablePlayerStack[denom] || 0);
+                            this.performRedistribution(denom, current - 1);
+                        });
+                    });
+                }
+            }
+        };
+
+        // Payouts Screen Logic
+        const Payouts = {
+            state: {
+                totalActualBuyIns: 0,
+                totalPayoutCalculated: 0,
+            },
+            
+            calculatePlayerPayoutValue(playerChips) {
+                return AppState.activeDenominations.reduce((total, denom) => total + (playerChips[denom] || 0) * denom, 0);
+            },
+            
+            updateOverallTotals() {
+                this.state.totalActualBuyIns = AppState.players.reduce((sum, p) => sum + (parseFloat(p.buyIn) || 0), 0);
+                this.state.totalPayoutCalculated = AppState.players.reduce((sum, p) => sum + (p.payoutValue || 0), 0);
+            },
+            
+            addPlayer() {
+                if (!AppState.activeDenominations || AppState.activeDenominations.length === 0) {
+                    showAlert("Setup Required", "Please complete Chip Setup first.");
+                    switchTab('chip-setup');
+                    return;
+                }
+                const newPlayerId = `payout_player_${AppState.nextPlayerId}`;
+                const initialChips = AppState.activeDenominations.reduce((acc, denom) => {
+                    acc[denom] = AppState.playerStackTemplate[denom] !== undefined ? AppState.playerStackTemplate[denom] : 0;
+                    return acc;
+                }, {});
+                const newPlayer = {
+                    id: newPlayerId,
+                    name: `Player ${AppState.nextPlayerId + 1}`,
+                    buyIn: String((parseFloat(AppState.buyIn) || 0).toFixed(2)),
+                    chips: initialChips,
+                    payoutValue: this.calculatePlayerPayoutValue(initialChips),
+                };
+                AppState.players.push(newPlayer);
+                AppState.nextPlayerId++;
+                this.render();
+            },
+            
+            removePlayer(playerId) {
+                AppState.players = AppState.players.filter(p => p.id !== playerId);
+                this.render();
+            },
+            
+            updatePlayer(playerId, field, value, denomValue = null) {
+                AppState.players = AppState.players.map(p => {
+                    if (p.id === playerId) {
+                        const updatedPlayer = { ...p };
+                        if (field === 'name') updatedPlayer.name = value;
+                        else if (field === 'buyIn') updatedPlayer.buyIn = value; // Direct update
+                        else if (field === 'buyInBlur') {
+                            let numericBuyIn = parseFloat(value);
+                            updatedPlayer.buyIn = isNaN(numericBuyIn) || numericBuyIn < 0 ? '0.00' : numericBuyIn.toFixed(2);
+                        } else if (field === 'chips') {
+                             updatedPlayer.chips = { ...p.chips, [denomValue]: parseInt(value, 10) || 0 };
+                             updatedPlayer.payoutValue = this.calculatePlayerPayoutValue(updatedPlayer.chips);
+                        }
+                        return updatedPlayer;
+                    }
+                    return p;
+                });
+                this.render();
+            },
+            
+            finalizeSession(){
+                const difference = this.state.totalActualBuyIns - this.state.totalPayoutCalculated;
+                if (Math.abs(difference) > 0.01 * AppState.players.length) {
+                    if(!confirm(`Discrepancy Alert: Total Buy-ins ($${this.state.totalActualBuyIns.toFixed(2)}) and Payouts ($${this.state.totalPayoutCalculated.toFixed(2)}) don't match. Difference: $${difference.toFixed(2)}. Finalize anyway?`)){
+                        return;
+                    }
+                }
+                
+                const sessionData = {
+                    id: `session_${new Date().getTime()}`,
+                    timestamp: new Date().toISOString(),
+                    players: AppState.players.map(p => ({
+                        id: p.id,
+                        name: p.name,
+                        buyIn: parseFloat(p.buyIn) || 0,
+                        payoutValue: p.payoutValue || 0,
+                        net: (p.payoutValue || 0) - (parseFloat(p.buyIn) || 0),
+                    })),
+                    totalActualBuyIns: this.state.totalActualBuyIns,
+                    totalPayoutCalculated: this.state.totalPayoutCalculated,
+                    denominationsUsed: [...AppState.activeDenominations],
+                    numPlayers: AppState.players.length,
+                };
+                
+                History.addSession(sessionData);
+                showAlert("Session Finalized", "Session data saved to history.");
+                
+                AppState.players = [];
+                AppState.nextPlayerId = 0;
+                this.render();
+            },
+
+            render() {
+                const target = document.getElementById('payouts');
+                this.updateOverallTotals();
+
+                if (!AppState.activeDenominations || AppState.activeDenominations.length === 0) {
+                    target.innerHTML = `
+                        <h2 class="screen-title">Payouts</h2>
+                        <div class="payout-instructions-container">
+                            ${getIcon('alert-circle-outline')}
+                            <p class="payout-instructions-text">Please run "Chip Setup" first.</p>
+                            <button class="secondary-button" id="go-to-setup-btn">Go to Chip Setup</button>
+                        </div>
+                    `;
+                     document.getElementById('go-to-setup-btn').addEventListener('click', () => switchTab('chip-setup'));
+                    return;
+                }
+                
+                let playersHTML = AppState.players.map(player => `
+                    <div class="player-entry" id="${player.id}">
+                        <div class="player-header">
+                            <input type="text" class="player-name-input" value="${player.name}" data-player-id="${player.id}">
+                            <button class="remove-player-button" data-player-id="${player.id}">${getIcon('trash-bin')}</button>
+                        </div>
+                        ${renderNumberInput({
+                            id: `buy-in-${player.id}`,
+                            label: 'Buy-in Amount: $',
+                            value: player.buyIn,
+                            min: 0,
+                            step: 1
+                        })}
+                        <h4 class="sub-section-title-small">Chip Counts at Cash Out:</h4>
+                        ${AppState.activeDenominations.map(denom => `
+                            <div class="chip-input-row-payout">
+                                ${renderChipDisplay({ value: denom, activeDenominations: AppState.activeDenominations })}
+                                <div class="payout-number-input-cell">
+                                ${renderNumberInput({
+                                    id: `payout-chip-${player.id}-${denom}`,
+                                    value: String(player.chips[denom] || 0),
+                                    min: 0,
+                                    inputGroupStyleOverride: 'margin-bottom: 0;'
+                                })}
+                                </div>
+                            </div>
+                        `).join('')}
+                        <p class="payout-value-text">Payout: $${player.payoutValue.toFixed(2)}</p>
+                    </div>
+                `).join('');
+
+                let footerHTML = AppState.players.length > 0 ? `
+                    <div class="sticky-footer-totals-section">
+                        <div class="total-display-item">
+                            <span class="total-label-payout">Total Buy-ins:</span>
+                            <span class="total-value-payout">$${this.state.totalActualBuyIns.toFixed(2)}</span>
+                        </div>
+                        <div class="total-display-item">
+                            <span class="total-label-payout">Total Payouts:</span>
+                            <span class="total-value-payout">$${this.state.totalPayoutCalculated.toFixed(2)}</span>
+                        </div>
+                         <button class="primary-button finalize-button" id="finalize-session-btn">${getIcon('save-outline')} Finalize Session</button>
+                    </div>` : '';
+
+                target.innerHTML = `
+                    <h2 class="screen-title">${getIcon('cash')} Payout Calculator ${getIcon('cash')}</h2>
+                    ${AppState.players.length > 0 ? `<div class="table-visualization-section">
+                        <h3 class="sub-section-title">${getIcon('tablet-landscape')} Live Table View ${getIcon('tablet-landscape')}</h3>
+                        ${renderPokerTable(AppState.players)}
+                    </div>` : ''}
+                    <button class="primary-button" id="add-player-btn">${getIcon('add-circle')} Add Player</button>
+                    <div class="player-entries-container">${playersHTML}</div>
+                    ${footerHTML}
+                `;
+                this.addEventListeners();
+            },
+            addEventListeners() {
+                document.getElementById('add-player-btn')?.addEventListener('click', () => this.addPlayer());
+                document.getElementById('finalize-session-btn')?.addEventListener('click', () => this.finalizeSession());
+                
+                AppState.players.forEach(player => {
+                    document.querySelector(`.player-name-input[data-player-id="${player.id}"]`)?.addEventListener('change', (e) => this.updatePlayer(player.id, 'name', e.target.value));
+                    document.querySelector(`.remove-player-button[data-player-id="${player.id}"]`)?.addEventListener('click', () => this.removePlayer(player.id));
+                    document.querySelector(`.player-seat[data-player-id="${player.id}"]`)?.addEventListener('click', () => {
+                        document.getElementById(player.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    });
+
+                    const buyInInput = document.getElementById(`buy-in-${player.id}`);
+                    buyInInput?.addEventListener('input', e => this.updatePlayer(player.id, 'buyIn', e.target.value));
+                    buyInInput?.addEventListener('blur', e => this.updatePlayer(player.id, 'buyInBlur', e.target.value));
+                    document.getElementById(`increment-buy-in-${player.id}`)?.addEventListener('click', () => {
+                        const current = parseFloat(player.buyIn) || 0;
+                        this.updatePlayer(player.id, 'buyInBlur', String(current + 1));
+                    });
+                    document.getElementById(`decrement-buy-in-${player.id}`)?.addEventListener('click', () => {
+                        const current = parseFloat(player.buyIn) || 0;
+                        this.updatePlayer(player.id, 'buyInBlur', String(Math.max(0, current - 1)));
+                    });
+
+                    AppState.activeDenominations.forEach(denom => {
+                        const chipInputId = `payout-chip-${player.id}-${denom}`;
+                        document.getElementById(chipInputId)?.addEventListener('change', e => this.updatePlayer(player.id, 'chips', e.target.value, denom));
+                        document.getElementById(`increment-${chipInputId}`)?.addEventListener('click', () => {
+                             const current = parseInt(player.chips[denom] || '0');
+                             this.updatePlayer(player.id, 'chips', current + 1, denom);
+                        });
+                        document.getElementById(`decrement-${chipInputId}`)?.addEventListener('click', () => {
+                             const current = parseInt(player.chips[denom] || '0');
+                             this.updatePlayer(player.id, 'chips', Math.max(0, current - 1), denom);
+                        });
+                    });
+                });
+            }
+        };
+
+        // History Screen Logic
+        const History = {
+            state: {
+                selectedPlayer: ''
+            },
+            
+            addSession(sessionData){
+                AppState.sessionHistory.unshift(sessionData);
+                
+                const newStats = JSON.parse(JSON.stringify(AppState.playerStats));
+                sessionData.players.forEach(p => {
+                    const playerName = p.name;
+                    if (!newStats[playerName]) {
+                        newStats[playerName] = {
+                            totalBuyIn: 0, totalPayout: 0, totalNet: 0, sessions: [], cumulativeNetHistory: []
+                        };
+                    }
+                    newStats[playerName].totalBuyIn += p.buyIn;
+                    newStats[playerName].totalPayout += p.payoutValue;
+                    newStats[playerName].totalNet += p.net;
+                    newStats[playerName].sessions.unshift({
+                        sessionId: sessionData.id, net: p.net, timestamp: sessionData.timestamp
+                    });
+
+                    const cumHistoryArray = newStats[playerName].cumulativeNetHistory;
+                    const lastEntry = cumHistoryArray[cumHistoryArray.length - 1];
+                    const newCumulativeNet = (lastEntry ? lastEntry.cumulativeNet : 0) + p.net;
+                    
+                    cumHistoryArray.push({
+                        sessionTimestamp: sessionData.timestamp,
+                        cumulativeNet: newCumulativeNet,
+                        y: newCumulativeNet
+                    });
+                });
+                AppState.playerStats = newStats;
+                saveData();
+                this.render();
+            },
+            
+            render() {
+                const target = document.getElementById('history');
+                const uniquePlayerNames = Object.keys(AppState.playerStats).sort();
+
+                if (AppState.sessionHistory.length === 0) {
+                    target.innerHTML = `
+                         <h2 class="screen-title">Session History & Stats</h2>
+                         <div class="history-empty-state">
+                            ${getIcon('layers-outline')}
+                            <p class="info-text">No game sessions recorded yet.</p>
+                            <p class="info-text">Complete a game in the "Payouts" tab and finalize it to see history here.</p>
+                         </div>`;
+                    return;
+                }
+                
+                if (uniquePlayerNames.length > 0 && (!this.state.selectedPlayer || !uniquePlayerNames.includes(this.state.selectedPlayer))) {
+                    this.state.selectedPlayer = uniquePlayerNames[0];
+                }
+
+                let playerStatsHTML = '';
+                const selectedPlayerData = this.state.selectedPlayer ? AppState.playerStats[this.state.selectedPlayer] : null;
+
+                if (selectedPlayerData) {
+                    playerStatsHTML = `
+                    <div class="player-stats-card">
+                        <h3 class="player-stats-title">${getIcon('person-circle-outline')} ${this.state.selectedPlayer}'s Performance</h3>
+                        <div class="player-stat-row"><span class="player-stat-label">Total Buy-ins:</span><span class="player-stat-value">$${selectedPlayerData.totalBuyIn.toFixed(2)}</span></div>
+                        <div class="player-stat-row"><span class="player-stat-label">Total Payouts:</span><span class="player-stat-value">$${selectedPlayerData.totalPayout.toFixed(2)}</span></div>
+                        <div class="player-stat-row"><span class="player-stat-label">Overall Net:</span><span class="player-stat-value ${selectedPlayerData.totalNet >= 0 ? 'history-player-net-positive' : 'history-player-net-negative'}">$${selectedPlayerData.totalNet.toFixed(2)}</span></div>
+                        
+                        <h4 class="player-stats-subtitle">${getIcon('stats-chart')} Winnings Over Time:</h4>
+                        ${renderSimpleLineGraph({ data: selectedPlayerData.cumulativeNetHistory, selectedPlayer: this.state.selectedPlayer })}
+
+                        <h4 class="player-stats-subtitle">Session Log:</h4>
+                        <div class="player-session-log-container">
+                        ${selectedPlayerData.sessions.map(s => `
+                            <div class="player-session-item">
+                                <span class="player-session-date">${new Date(s.timestamp).toLocaleDateString()}</span>
+                                <span class="player-session-net ${s.net >= 0 ? 'history-player-net-positive' : 'history-player-net-negative'}">${s.net >= 0 ? '+' : ''}${s.net.toFixed(2)}</span>
+                            </div>
+                        `).join('')}
+                        </div>
+                    </div>`;
+                }
+
+                let allSessionsHTML = '';
+                if (!this.state.selectedPlayer) {
+                    allSessionsHTML = `
+                    <h3 class="section-title">${getIcon('layers')} All Game Sessions</h3>
+                    ${AppState.sessionHistory.map(session => `
+                        <div class="history-session-card">
+                            <p class="history-session-timestamp">Session: ${new Date(session.timestamp).toLocaleString()}</p>
+                            <p class="history-summary-text">Players: <span class="history-summary-value">${session.numPlayers}</span></p>
+                            <p class="history-summary-text">Total Buy-ins: <span class="history-summary-value">$${session.totalActualBuyIns.toFixed(2)}</span></p>
+                            <p class="history-summary-text">Total Payouts: <span class="history-summary-value">$${session.totalPayoutCalculated.toFixed(2)}</span></p>
+                            
+                            <h5 class="history-player-list-title">Player Results:</h5>
+                            ${session.players.map(p => `
+                                <div class="history-player-row">
+                                    <span class="history-player-name">${p.name}</span>
+                                    <span class="history-player-net ${p.net >= 0 ? 'history-player-net-positive' : 'history-player-net-negative'}">Net: $${p.net.toFixed(2)}</span>
+                                </div>
+                            `).join('')}
+                            <h5 class="history-denominations-title">Chips Used:</h5>
+                            <div class="history-denominations-container">
+                                ${session.denominationsUsed.map(d => renderChipDisplay({value: d, size: 'small', activeDenominations: session.denominationsUsed})).join('')}
+                            </div>
+                        </div>
+                    `).join('')}`;
+                }
+
+
+                target.innerHTML = `
+                     <h2 class="screen-title">Session History & Stats</h2>
+                     <div class="player-selector-container">
+                        <label for="player-select" class="label">View Stats for Player:</label>
+                        <select id="player-select" class="player-select-dropdown">
+                            <option value="">-- All Sessions --</option>
+                            ${uniquePlayerNames.map(name => `<option value="${name}" ${this.state.selectedPlayer === name ? 'selected' : ''}>${name}</option>`).join('')}
+                        </select>
+                     </div>
+                     ${playerStatsHTML}
+                     ${allSessionsHTML}
+                `;
+                this.addEventListeners();
+            },
+            addEventListeners(){
+                 document.getElementById('player-select')?.addEventListener('change', (e) => {
+                    this.state.selectedPlayer = e.target.value;
+                    this.render();
+                });
+            }
+        };
+
+
+        // --- MAIN APP ---
+        function switchTab(tabId) {
+            AppState.activeTab = tabId;
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`.tab-button[data-tab="${tabId}"]`).classList.add('active');
+
+            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        async function loadData() {
+            const history = await AsyncStorage.getItem('pokerNightPro_sessionHistory');
+            const stats = await AsyncStorage.getItem('pokerNightPro_playerStats');
+            if (history) AppState.sessionHistory = JSON.parse(history);
+            if (stats) AppState.playerStats = JSON.parse(stats);
+        }
+
+        async function saveData() {
+            await AsyncStorage.setItem('pokerNightPro_sessionHistory', JSON.stringify(AppState.sessionHistory));
+            await AsyncStorage.setItem('pokerNightPro_playerStats', JSON.stringify(AppState.playerStats));
+        }
+
+        function initializeApp() {
+            loadData().then(() => {
+                ChipSetup.render();
+                Payouts.render();
+                History.render();
+
+                document.querySelectorAll('.tab-button').forEach(button => {
+                    button.addEventListener('click', () => switchTab(button.dataset.tab));
+                });
+                
+                document.getElementById('footer-text').innerHTML = `May the flop be with you! User session started: ${new Date().toLocaleTimeString()}`;
+            });
+        }
+        
+        // --- STARTUP ---
+        document.addEventListener('DOMContentLoaded', initializeApp);
+
+    </script>
+</body>
+</html>
