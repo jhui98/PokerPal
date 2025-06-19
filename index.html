@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Poker Night Pro</title>
+    <title>PokerPal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
@@ -373,6 +373,11 @@
             margin-top: 10px;
             font-weight: 600;
         }
+        .summary-text .value-over-buy-in {
+            color: var(--color-error);
+            font-weight: 700;
+        }
+
         .blinds-suggestion-container {
             margin-bottom: 30px;
             padding: 20px;
@@ -712,6 +717,76 @@
             vertical-align: middle;
             display: inline-block;
         }
+        
+        /* --- Responsive Design --- */
+        @media (max-width: 640px) {
+            .app-header-title {
+                font-size: 22px;
+            }
+
+            .tab-button {
+                font-size: 13px;
+                padding: 12px 2px;
+            }
+
+            .tab-pane {
+                padding: 12px;
+            }
+
+            .section {
+                padding: 16px;
+            }
+
+            .screen-title {
+                font-size: 22px;
+            }
+
+            .section-title {
+                font-size: 20px;
+            }
+            
+            .sub-section-title {
+                font-size: 18px;
+            }
+            
+            .player-name-input {
+                font-size: 20px;
+            }
+            
+            .chip-adjustment-row, .chip-input-row-payout {
+                flex-direction: column;
+                align-items: center;
+                gap: 12px;
+            }
+
+            .setup-number-input-cell, .payout-number-input-cell {
+                margin-left: 0;
+                width: 100%;
+                max-width: 240px;
+            }
+
+            .chip-count-text {
+                margin-left: 0;
+                margin-top: 5px;
+            }
+            
+            .total-display-item {
+                flex-direction: column;
+                align-items: center;
+                gap: 4px;
+                text-align: center;
+                padding: 8px 12px;
+            }
+
+            .total-label-payout, .total-value-payout {
+                font-size: 16px;
+            }
+
+            .primary-button {
+                padding: 15px;
+                font-size: 16px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -719,7 +794,7 @@
     <div id="app" class="app-container">
         <header class="app-header">
             <h1 class="app-header-title">
-                Poker Night Pro <span class="icon" data-name="logo-react"></span>
+                PokerPal <span class="icon" data-name="logo-react"></span>
             </h1>
         </header>
 
@@ -795,7 +870,7 @@
         function getIcon(name) {
             const iconMap = {
                 'remove-circle-outline': '－', 'add-circle-outline': '＋', 'add-circle': '＋',
-                'layers-outline': '☰', 'layers': '☰', 'cash-outline': '💲', 'cash': '💲',
+                'layers-outline': '☰', 'layers': '☰', 'cash-outline': '💲', 'cash': '�',
                 'heart-outline': '♥', 'heart': '♥', 'spade-outline': '♠', 'spade': '♠',
                 'tablet-landscape-outline': '▭', 'tablet-landscape': '▭',
                 'trash-bin-outline': '🗑️', 'trash-bin': '🗑️', 'save-outline': '✔', 'save': '✔',
@@ -854,8 +929,8 @@
         }
         
         function renderPokerTable(players = []) {
-            const containerWidth = document.getElementById('payouts')?.clientWidth || 350;
-            const tableWidth = Math.min(containerWidth * 0.85, 450);
+            const containerWidth = document.getElementById('payouts')?.clientWidth || window.innerWidth;
+            const tableWidth = Math.min(containerWidth * 0.9, 400);
             const tableHeight = tableWidth / 1.8;
             const seatSize = Math.max(30, tableWidth / 12);
             const numPlayers = players.length;
@@ -977,6 +1052,7 @@
                 totalPot: 0,
                 activeDenominations: [],
                 editablePlayerStack: {},
+                initialPlayerStack: {}, // To store the original calculated stack for reset
                 totalPlayerChips: 0,
                 totalPlayerValue: 0,
                 totalChipsNeeded: {},
@@ -1007,75 +1083,75 @@
                 }
                 return [final_C1, final_C2, final_C3].filter(d => d !== undefined && d !== null).sort((a, b) => a - b);
             },
-
+            
             calculateDefaultPlayerStack(targetBuyIn, denoms) {
-                const n = denoms.length;
-                if (n === 0 || targetBuyIn <= 0) return {};
-                let stack = {}; denoms.forEach(d => stack[d] = 0);
-                let tempBuyIn = targetBuyIn; let countsArray = new Array(n).fill(0);
-                const minChipTargets = [10, 8];
-                for (let i = 0; i < n - 1; i++) {
-                    if (tempBuyIn <= 0 || denoms[i] <= 0) continue;
-                    let num_di = minChipTargets[i] || 1;
-                    if (denoms[i] * num_di > tempBuyIn * 0.75 && tempBuyIn > denoms[i]) {
-                        num_di = Math.floor(tempBuyIn * 0.25 / denoms[i]);
-                        num_di = Math.max(1, num_di);
-                    }
-                    num_di = Math.min(num_di, Math.floor(tempBuyIn / denoms[i]));
-                    countsArray[i] = Math.max(0, num_di);
-                    tempBuyIn -= countsArray[i] * denoms[i];
+                if (denoms.length === 0 || targetBuyIn <= 0) return {};
+
+                const stack = {};
+                const sortedDenoms = [...denoms].sort((a, b) => a - b);
+                denoms.forEach(d => stack[d] = 0);
+
+                const ratios = [4, 2, 1]; // 4 of the smallest, 2 of middle, 1 of largest
+                let setValue = 0;
+                
+                if (sortedDenoms.length === 1) {
+                    setValue = sortedDenoms[0];
+                } else if (sortedDenoms.length === 2) {
+                     setValue = sortedDenoms[0] * ratios[0] + sortedDenoms[1] * ratios[1];
+                } else {
+                     setValue = sortedDenoms[0] * ratios[0] + sortedDenoms[1] * ratios[1] + sortedDenoms[2] * ratios[2];
                 }
-                if (n > 0 && tempBuyIn > 0 && denoms[n - 1] > 0) {
-                    countsArray[n - 1] += Math.floor(tempBuyIn / denoms[n - 1]);
-                    tempBuyIn -= Math.floor(tempBuyIn / denoms[n - 1]) * denoms[n - 1];
+
+                if (setValue <= 0) {
+                    const denomsForGreedy = [...denoms].sort((a,b)=>b-a);
+                     let remaining = targetBuyIn;
+                     for(const d of denomsForGreedy){
+                         if(remaining >= d){
+                             stack[d] = Math.floor(remaining / d);
+                             remaining -= stack[d] * d;
+                         }
+                     }
+                     return stack;
                 }
-                if (tempBuyIn > 0.001 && denoms[0] > 0 && n > 0) {
-                    countsArray[0] += Math.round(tempBuyIn / denoms[0]);
-                }
-                denoms.forEach((denom, index) => stack[denom] = Math.max(0, Math.round(countsArray[index])));
-                denoms.forEach(denom => { if (stack[denom] === 0) stack[denom] = 1; });
-                let currentValueAfterMins = denoms.reduce((sum, d) => sum + (stack[d] || 0) * d, 0);
-                let difference = targetBuyIn - currentValueAfterMins;
-                let attempts = 0;
-                while (Math.abs(difference) > 0.001 && attempts < 20) {
-                    attempts++; let adjusted = false;
-                    if (difference > 0) {
-                        const sortedDenomsAdd = [...denoms].sort((a, b) => a - b);
-                        for (const denom of sortedDenomsAdd) {
-                            if (difference >= denom) { stack[denom]++; difference -= denom; adjusted = true; break; }
-                        }
-                        if (!adjusted && difference > 0.001 && sortedDenomsAdd.length > 0) { stack[sortedDenomsAdd[0]]++; difference -= sortedDenomsAdd[0]; }
-                    } else {
-                        let excess = -difference;
-                        const sortedDenomsRemove = [...denoms].sort((a, b) => b - a);
-                        for (const denom of sortedDenomsRemove) {
-                            if (excess <= 0.001) break;
-                            if (stack[denom] > 1 && excess >= denom) { stack[denom]--; excess -= denom; adjusted = true; break; }
-                        }
-                        if (!adjusted && excess > 0.001 && sortedDenomsRemove.length > 0) {
-                            const smallestToRemove = sortedDenomsRemove[sortedDenomsRemove.length - 1];
-                            if(stack[smallestToRemove] > 1){ stack[smallestToRemove]--; excess -= smallestToRemove; }
-                        }
-                    }
-                    currentValueAfterMins = denoms.reduce((sum, d) => sum + (stack[d] || 0) * d, 0);
-                    difference = targetBuyIn - currentValueAfterMins;
-                    if (!adjusted && Math.abs(difference) < (denoms[0] || 0.01)) break;
-                }
-                denoms.forEach(denom => stack[denom] = Math.max(1, Math.round(stack[denom] || 1)));
-                let finalCalculatedValue = denoms.reduce((sum, d) => sum + (stack[d] || 0) * d, 0);
-                if (finalCalculatedValue > targetBuyIn + 0.001) {
-                    let excessToTrim = finalCalculatedValue - targetBuyIn;
-                    const sortedDenomsForTrimming = [...denoms].sort((a, b) => a - b);
-                    for (const denom of sortedDenomsForTrimming) {
-                        if (excessToTrim <= 0.001) break;
-                        while ((stack[denom] || 0) > 0 && excessToTrim >= denom) {
-                            if (stack[denom] > 1 || (stack[denom] === 1 && finalCalculatedValue - denom >= targetBuyIn - (denoms[0] || 0.01))) {
-                                stack[denom]--; excessToTrim -= denom; finalCalculatedValue -= denom;
-                            } else break;
-                        }
+                
+                const numSets = Math.floor(targetBuyIn / setValue);
+                
+                if (sortedDenoms.length >= 1) stack[sortedDenoms[0]] = numSets * ratios[0];
+                if (sortedDenoms.length >= 2) stack[sortedDenoms[1]] = numSets * ratios[1];
+                if (sortedDenoms.length >= 3) stack[sortedDenoms[2]] = numSets * ratios[2];
+
+                let currentValue = numSets * setValue;
+                let remainingValue = targetBuyIn - currentValue;
+
+                const denomsForGreedy = [...denoms].sort((a, b) => b - a);
+                for (const denom of denomsForGreedy) {
+                    if (remainingValue >= denom) {
+                        const count = Math.floor(remainingValue / denom);
+                        stack[denom] += count;
+                        remainingValue -= count * denom;
                     }
                 }
-                denoms.forEach(denom => stack[denom] = Math.max(0, stack[denom]));
+
+                // Final check to ensure we are not over the buy-in.
+                let finalValue = 0;
+                denoms.forEach(denom => { finalValue += (stack[denom] || 0) * denom; });
+                let difference = finalValue - targetBuyIn;
+                
+                const denomsForRemoval = [...denoms].sort((a, b) => a - b);
+                while (difference > 0.001) {
+                    let wasAdjusted = false;
+                    for (const denom of denomsForRemoval) {
+                        if (stack[denom] > 0 && difference >= denom) {
+                            stack[denom]--;
+                            difference -= denom;
+                            wasAdjusted = true;
+                            break; 
+                        }
+                    }
+                    if (!wasAdjusted) break; 
+                }
+
+                denoms.forEach(d => stack[d] = stack[d] || 0);
                 return stack;
             },
 
@@ -1095,53 +1171,16 @@
                 this.state.totalChipsNeeded = currentTotalChipsNeeded;
                 this.state.blindsSuggestion = currentSmallestDenom > 0 ? { small: currentSmallestDenom, big: currentSmallestDenom * 2 } : { small: 0, big: 0 };
             },
-
-            performRedistribution(adjustedDenom, newCountInput) {
-                const targetBuyIn = parseFloat(this.state.buyInAmount);
-                if (isNaN(targetBuyIn) || targetBuyIn <= 0 || !this.state.activeDenominations || this.state.activeDenominations.length === 0) {
-                    this.state.editablePlayerStack[adjustedDenom] = Math.max(0, parseInt(String(newCountInput), 10) || 0);
-                    return;
-                }
-                let newCount = Math.max(0, parseInt(String(newCountInput), 10) || 0);
-                let workingStack = { ...this.state.editablePlayerStack };
-                workingStack[adjustedDenom] = newCount;
-                let iterations = 0;
-                while (iterations < 30) {
-                    iterations++;
-                    let currentValue = this.state.activeDenominations.reduce((sum, d) => sum + (workingStack[d] || 0) * d, 0);
-                    let differenceToTarget = targetBuyIn - currentValue;
-                    if (Math.abs(differenceToTarget) < 0.001) break;
-                    let changedThisLoop = false;
-                    if (differenceToTarget > 0) {
-                        const sortedDenomsAdd = [...this.state.activeDenominations].sort((a, b) => a - b);
-                        for (const denom of sortedDenomsAdd) {
-                            if (denom === adjustedDenom && differenceToTarget < denom) continue;
-                            if (differenceToTarget >= denom) {
-                                workingStack[denom] = (workingStack[denom] || 0) + 1;
-                                changedThisLoop = true; break;
-                            }
-                        }
-                        if (!changedThisLoop && differenceToTarget > 0.001 && sortedDenomsAdd.length > 0) {
-                            const smallestDenomAvailable = sortedDenomsAdd.find(d => d !== adjustedDenom) || sortedDenomsAdd[0];
-                            workingStack[smallestDenomAvailable] = (workingStack[smallestDenomAvailable] || 0) + 1;
-                            changedThisLoop = true;
-                        }
-                    } else {
-                        let excessToRemove = -differenceToTarget;
-                        const sortedDenomsRemove = [...this.state.activeDenominations].sort((a, b) => b - a);
-                        for (const denom of sortedDenomsRemove) {
-                            if (excessToRemove <= 0.001) break;
-                            if (denom === adjustedDenom && excessToRemove < denom) continue;
-                            if ((workingStack[denom] || 0) > 0) {
-                                workingStack[denom]--;
-                                excessToRemove -= denom;
-                                changedThisLoop = true; break;
-                            }
-                        }
-                    }
-                    if (!changedThisLoop) break;
-                }
-                this.state.editablePlayerStack = workingStack;
+            
+            handleStackChange(denom, value) {
+                const newCount = Math.max(0, parseInt(value, 10) || 0);
+                this.state.editablePlayerStack[denom] = newCount;
+                this.updateOutputs();
+                this.render();
+            },
+            
+            handleResetDistribution() {
+                this.state.editablePlayerStack = { ...this.state.initialPlayerStack };
                 this.updateOutputs();
                 this.render();
             },
@@ -1170,12 +1209,13 @@
                     return;
                 }
                 this.state.activeDenominations = denoms;
-                this.state.editablePlayerStack = this.calculateDefaultPlayerStack(buyInVal, denoms);
+                const initialStack = this.calculateDefaultPlayerStack(buyInVal, denoms);
+                this.state.editablePlayerStack = { ...initialStack };
+                this.state.initialPlayerStack = { ...initialStack };
                 this.state.showResults = true;
                 
-                // Update global state and auto-populate Payouts
                 AppState.activeDenominations = denoms;
-                AppState.playerStackTemplate = this.state.editablePlayerStack;
+                AppState.playerStackTemplate = { ...initialStack };
                 AppState.numPlayers = this.state.numPlayers;
                 AppState.buyIn = this.state.buyInAmount;
                 
@@ -1199,7 +1239,7 @@
 
                 this.updateOutputs();
                 this.render();
-                Payouts.render(); // Re-render payouts tab with new players
+                Payouts.render();
             },
 
             render() {
@@ -1208,14 +1248,20 @@
 
                 let resultsHTML = '';
                 if(this.state.showResults){
+                    const isOverBuyIn = this.state.totalPlayerValue > parseFloat(this.state.buyInAmount);
+                    const valueClass = isOverBuyIn ? 'value-over-buy-in' : '';
+
                     resultsHTML = `
                     <div class="results-section">
                         <h3 class="section-title">${getIcon('layers')} Chip Distribution ${getIcon('layers')}</h3>
                         <div class="sub-section">
-                            <h4 class="sub-section-title">Adjustable Stack per Player:</h4>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+                                <h4 class="sub-section-title" style="margin: 0;">Adjustable Stack per Player:</h4>
+                                <button class="secondary-button" id="reset-dist-btn" style="margin-top: 0; padding: 8px 12px; font-size: 14px;">Reset</button>
+                            </div>
                             ${this.state.activeDenominations.map(denom => `
                                 <div class="chip-adjustment-row" data-denom="${denom}">
-                                    ${renderChipDisplay({ value: denom, activeDenominations: this.state.activeDenominations, style: {marginRight: '15px'} })}
+                                    ${renderChipDisplay({ value: denom, activeDenominations: this.state.activeDenominations })}
                                     <div class="setup-number-input-cell">
                                         ${renderNumberInput({
                                             id: `stack-chip-${denom}`,
@@ -1227,7 +1273,7 @@
                                 </div>
                             `).join('')}
                              <p class="summary-text">Total chips per player: ${this.state.totalPlayerChips}</p>
-                             <p class="summary-text">Total value per player: $${this.state.totalPlayerValue.toFixed(2)}</p>
+                             <p class="summary-text">Total value per player: <span class="${valueClass}">$${this.state.totalPlayerValue.toFixed(2)}</span></p>
                         </div>
                         <div class="sub-section blinds-suggestion-container">
                              <h4 class="sub-section-title">${getIcon('heart')} Suggested Blinds ${getIcon('spade')}</h4>
@@ -1294,18 +1340,19 @@
                 document.getElementById('define-chips-btn').addEventListener('click', () => this.handleDefineChips());
                 
                 if(this.state.showResults) {
+                    document.getElementById('reset-dist-btn')?.addEventListener('click', () => this.handleResetDistribution());
                     this.state.activeDenominations.forEach(denom => {
                         const inputId = `stack-chip-${denom}`;
-                        document.getElementById(inputId).addEventListener('change', (e) => {
-                             this.performRedistribution(denom, e.target.value);
-                        });
-                         document.getElementById(`increment-${inputId}`).addEventListener('click', () => {
-                            const current = parseInt(this.state.editablePlayerStack[denom] || 0);
-                            this.performRedistribution(denom, current + 1);
+                        const inputElement = document.getElementById(inputId);
+
+                        inputElement.addEventListener('change', (e) => this.handleStackChange(denom, e.target.value));
+                        document.getElementById(`increment-${inputId}`).addEventListener('click', () => {
+                            const current = parseInt(inputElement.value || 0);
+                            this.handleStackChange(denom, current + 1);
                         });
                         document.getElementById(`decrement-${inputId}`).addEventListener('click', () => {
-                            const current = parseInt(this.state.editablePlayerStack[denom] || 0);
-                            this.performRedistribution(denom, current - 1);
+                            const current = parseInt(inputElement.value || 0);
+                            this.handleStackChange(denom, current - 1);
                         });
                     });
                 }
@@ -1665,15 +1712,27 @@
         }
 
         async function loadData() {
-            const history = await AsyncStorage.getItem('pokerNightPro_sessionHistory');
-            const stats = await AsyncStorage.getItem('pokerNightPro_playerStats');
-            if (history) AppState.sessionHistory = JSON.parse(history);
-            if (stats) AppState.playerStats = JSON.parse(stats);
+            try {
+                const history = await AsyncStorage.getItem('pokerPal_sessionHistory');
+                const stats = await AsyncStorage.getItem('pokerPal_playerStats');
+                if (history) AppState.sessionHistory = JSON.parse(history);
+                if (stats) AppState.playerStats = JSON.parse(stats);
+            } catch (e) {
+                console.error("Failed to load data from localStorage", e);
+                // Data might be corrupted, clear it
+                await AsyncStorage.removeItem('pokerPal_sessionHistory');
+                await AsyncStorage.removeItem('pokerPal_playerStats');
+            }
         }
 
         async function saveData() {
-            await AsyncStorage.setItem('pokerNightPro_sessionHistory', JSON.stringify(AppState.sessionHistory));
-            await AsyncStorage.setItem('pokerNightPro_playerStats', JSON.stringify(AppState.playerStats));
+            try {
+                await AsyncStorage.setItem('pokerPal_sessionHistory', JSON.stringify(AppState.sessionHistory));
+                await AsyncStorage.setItem('pokerPal_playerStats', JSON.stringify(AppState.playerStats));
+            } catch (e) {
+                console.error("Failed to save data to localStorage", e);
+                showAlert("Save Error", "Could not save session data. Storage may be full.");
+            }
         }
 
         function initializeApp() {
@@ -1696,3 +1755,4 @@
     </script>
 </body>
 </html>
+�
