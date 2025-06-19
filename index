@@ -1,0 +1,1515 @@
+// Poker Night Pro - React Native App
+// This is the initial structure for the Poker Night Pro application in React Native.
+// It includes navigation and a basic Chip Setup screen.
+// Further development will be needed for full functionality.
+// NOTE: The react-native imports and other native-specific libraries have been
+// mocked or commented out to allow for preview in a web-based esbuild environment.
+// This is NOT a fully functional React Native app in this state.
+
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+
+// --- MOCK React Native Components for Web Preview ---
+const applyStyles = (styleProps) => {
+  if (Array.isArray(styleProps)) {
+    return Object.assign({}, ...styleProps.filter(Boolean));
+  }
+  return styleProps || {};
+};
+
+const View = React.forwardRef((props, ref) => <div ref={ref} style={applyStyles(props.style)}>{props.children}</div>);
+const Text = (props) => <span style={applyStyles(props.style)}>{props.children}</span>;
+
+const ScrollView = React.forwardRef((props, ref) => (
+    <div
+        ref={ref}
+        style={{
+            ...applyStyles(props.style),
+            ...applyStyles(props.contentContainerStyle),
+            overflowY: 'auto',
+            flex: 1, // Allow ScrollView to take available space in its flex parent
+        }}
+    >
+        {props.children}
+    </div>
+));
+
+const TextInput = (props) => {
+    const handleChange = (e) => {
+        if (props.onChangeText) {
+            props.onChangeText(e.target.value);
+        }
+    };
+    const handleBlur = (e) => {
+        if (props.onBlur) {
+            props.onBlur(e);
+        }
+    };
+    return (
+        <input
+            type={props.keyboardType === 'numeric' ? 'number' : 'text'}
+            style={applyStyles(props.style)}
+            value={props.value}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            placeholder={props.placeholder}
+            min={props.min} // For type="number"
+        />
+    );
+};
+const TouchableOpacity = (props) => <button onClick={props.onPress} style={{...applyStyles(props.style), cursor: props.disabled ? 'not-allowed' : 'pointer', opacity: props.disabled ? 0.6 : 1}} disabled={props.disabled}>{props.children}</button>;
+const SafeAreaView = (props) => <div style={applyStyles(props.style)}>{props.children}</div>;
+const StatusBar = () => null;
+const Platform = { OS: 'web', select: (options) => options.web || options.default || options.ios || options.android };
+const Alert = { alert: (title, message) => {
+    console.log(`ALERT: ${title}\n${message}`);
+    // Replace window.alert with a custom modal or notification in a real app
+    // For preview purposes, window.alert is kept but might be blocked by iframe.
+    // Consider rendering a custom alert component within the app's UI.
+    const customAlert = document.createElement('div');
+    customAlert.style.cssText = `
+        position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+        background-color: #333; color: white; padding: 15px 25px; border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 10000; font-family: sans-serif;
+        border-left: 5px solid #F59E0B; max-width: 90%; text-align: center;
+    `;
+    customAlert.innerHTML = `<strong>${title}</strong><br>${message.replace(/\n/g, '<br>')}`;
+    document.body.appendChild(customAlert);
+    setTimeout(() => {
+        customAlert.remove();
+    }, 5000); // Auto-dismiss after 5 seconds
+}};
+const Dimensions = { get: (dimension) => {
+    if (dimension === 'window') {
+        return { width: window.innerWidth, height: window.innerHeight };
+    }
+    return { width: 0, height: 0};
+}};
+
+const StyleSheet = {
+  create: (styles) => styles,
+  hairlineWidth: 1,
+};
+
+// --- MOCK Navigation Components ---
+const NavigationContainer = ({ children }) => <View style={styles.flexGrow}>{children}</View>;
+
+const createMaterialTopTabNavigator = () => {
+  const TabNavigator = ({ children, initialRouteName, screenOptions }) => {
+    const screensFromProps = React.Children.toArray(children).map(child => child.props);
+    const [activeTab, setActiveTab] = useState(initialRouteName || (screensFromProps[0] && screensFromProps[0].name));
+
+    const activeScreenData = screensFromProps.find(screen => screen.name === activeTab);
+    let screenElementToRender = null;
+
+    if (activeScreenData) {
+        const navigatorProvidedProps = {
+            setActiveTab, // Pass setActiveTab to screens so they can change tabs
+        };
+        const allPropsForScreen = {
+            ...navigatorProvidedProps,
+            ...(activeScreenData.propsFromApp || {}),
+        };
+        if (typeof activeScreenData.children === 'function') {
+            screenElementToRender = React.cloneElement(activeScreenData.children(allPropsForScreen), { key: activeTab });
+        } else if (activeScreenData.component) {
+            const ScreenComponent = activeScreenData.component;
+            screenElementToRender = <ScreenComponent key={activeTab} {...allPropsForScreen} />;
+        }
+    }
+
+    return (
+      <View style={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+        <View style={applyStyles(screenOptions?.tabBarStyle || styles.mockTabBar)}>
+          {screensFromProps.map(screen => (
+            <TouchableOpacity
+              key={screen.name}
+              onPress={() => setActiveTab(screen.name)}
+              style={applyStyles([
+                styles.mockTabButton,
+                activeTab === screen.name ?
+                {
+                  backgroundColor: screenOptions?.tabBarActiveTintColor || '#FACC15',
+                  borderBottomColor: screenOptions?.tabBarIndicatorStyle?.backgroundColor || '#FACC15',
+                  borderBottomWidth: screenOptions?.tabBarIndicatorStyle?.height || 3
+                } :
+                {
+                  backgroundColor: screenOptions?.tabBarStyle?.backgroundColor || '#166534'
+                }
+              ])}
+            >
+              <Text style={applyStyles([
+                  styles.mockTabButtonText, // Base style for tab button text
+                  activeTab === screen.name ?
+                    { color: screenOptions?.tabBarStyle?.backgroundColor || '#047857' } : 
+                    { color: screenOptions?.tabBarInactiveTintColor || '#A3A3A3' },
+                  screenOptions?.tabBarLabelStyle // Specific overrides from Tab.Navigator
+                ])}>
+                {screen.options?.title || screen.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <View style={styles.tabContentContainer}>
+          {screenElementToRender}
+        </View>
+      </View>
+    );
+  };
+
+  const TabScreen = (props) => null; // This component doesn't render anything itself
+
+  return {
+    Navigator: TabNavigator,
+    Screen: TabScreen,
+  };
+};
+
+const Ionicons = ({ name, size, color, style }) => {
+  // Simple text-based mock for Ionicons
+  let iconSymbol = name.substring(0,3); // Default to first 3 letters if not mapped
+  const iconStyle = {
+    fontSize: size || 18,
+    color: color || 'black',
+    fontFamily: 'Arial, sans-serif', // Ensure some basic font for symbols
+    verticalAlign: 'middle',
+    display: 'inline-block',
+    marginRight: '5px',
+    ...applyStyles(style)
+  };
+  switch (name) {
+    case 'remove-circle-outline': iconSymbol = '－'; break;
+    case 'add-circle-outline': case 'add-circle': iconSymbol = '＋'; break;
+    case 'layers-outline': case 'layers': iconSymbol = '☰'; break;
+    case 'cash-outline': case 'cash': iconSymbol = '$'; break;
+    case 'heart-outline': case 'heart': iconSymbol = '♥'; break;
+    case 'spade-outline': case 'spade': iconSymbol = '♠'; break;
+    case 'tablet-landscape-outline': case 'tablet-landscape': iconSymbol = '▭'; break;
+    case 'trash-bin-outline': case 'trash-bin': iconSymbol = '✕'; break;
+    case 'save-outline': case 'save': iconSymbol = '✔'; break;
+    case 'alert-circle-outline': iconSymbol = '⚠️'; break;
+    case 'logo-react': iconSymbol = '⚛️'; break;
+    case 'stats-chart': iconSymbol = '📈'; break; // Added for graph icon
+    case 'person-circle-outline': iconSymbol = '👤'; break; // Added for player icon
+    default: iconSymbol = name.replace('-outline','').replace('logo-','').substring(0,3).toUpperCase(); break;
+  }
+  return <span style={iconStyle}>{iconSymbol}</span>;
+};
+
+// Mock AsyncStorage for web preview (uses localStorage)
+const AsyncStorageMock = {
+  setItem: async (key, value) => {
+    try {
+      localStorage.setItem(key, value);
+    } catch (e) {
+      console.error("AsyncStorageMock: Error setting item", e);
+    }
+  },
+  getItem: async (key) => {
+    try {
+      return localStorage.getItem(key);
+    } catch (e) {
+      console.error("AsyncStorageMock: Error getting item", e);
+      return null;
+    }
+  },
+  removeItem: async (key) => {
+    try {
+      localStorage.removeItem(key);
+    } catch (e) {
+      console.error("AsyncStorageMock: Error removing item", e);
+    }
+  },
+  // Add other methods if your app uses them (e.g., getAllKeys, clear)
+};
+
+// If you were using @react-native-async-storage/async-storage
+// you could assign the mock like this:
+// jest.mock('@react-native-async-storage/async-storage', () => AsyncStorageMock);
+// For this web preview, we'll just use it directly if needed.
+
+let currentUserIdGlobal = 'mock-user-id-for-preview'; // Placeholder
+
+// Ordered chip colors for dynamic assignment
+const orderedChipColors = [
+    {name: 'White', bg:'#FFFFFF', text: '#1F2937', border: '#D1D5DB', innerRing: '#F3F4F6'},
+    {name: 'Red', bg:'#EF4444', text: '#FFFFFF', border: '#B91C1C', innerRing: '#FCA5A5'},
+    {name: 'Green', bg:'#22C55E', text: '#FFFFFF', border: '#15803D', innerRing: '#4ADE80'},
+    {name: 'Blue', bg:'#3B82F6', text: '#FFFFFF', border: '#1D4ED8', innerRing: '#60A5FA'},
+    {name: 'Orange', bg:'#F97316', text: '#FFFFFF', border: '#C2410C', innerRing: '#FB923C'},
+    {name: 'Black', bg:'#1F2937', text: '#F3F4F6', border: '#000000', innerRing: '#374151'},
+    {name: 'Purple', bg:'#8B5CF6', text: '#FFFFFF', border: '#6D28D9', innerRing: '#A78BFA'},
+    {name: 'Pink', bg:'#EC4899', text: '#FFFFFF', border: '#DB2777', innerRing: '#F9A8D4'},
+    // Fallbacks if more than 8 denominations are used
+    {name: 'Yellow', bg:'#FDE047', text: '#422006', border: '#D97706', innerRing: '#FEF3C7'},
+    {name: 'Teal', bg:'#10B981', text: '#FFFFFF', border: '#047857', innerRing: '#6EE7B7'}
+];
+const defaultChipColor = { bg: '#9CA3AF', text: '#1F2937', border: '#4B5563', innerRing: '#6B7280' };
+
+
+const NumberInputButton = ({ onPress, iconName, disabled }) => (
+  <TouchableOpacity onPress={onPress} style={styles.numberInputButton} disabled={disabled}>
+    <Ionicons name={iconName} size={20} color={colors.headerBg} />
+  </TouchableOpacity>
+);
+
+const NumberInputControl = ({ value, onValueChange, onIncrement, onDecrement, label, placeholder, step = 1, min = 0, max, keyboardType = 'numeric', editable = true,
+  inputGroupStyleOverride
+}) => {
+  const handleTextChange = (text) => {
+    // Allow empty string, minus sign, or valid numbers (including decimals)
+    if (text === '' || text === '-' || /^-?\d*\.?\d*$/.test(text)) {
+      onValueChange(text); // Pass the raw text for intermediate input state
+    }
+  };
+  const handleBlur = () => {
+      let stringValue = String(value).trim();
+      let numericValue = parseFloat(stringValue);
+
+      if (stringValue === '' || stringValue === '-' || isNaN(numericValue)) {
+          onValueChange(String(min)); // Default to min if invalid
+      } else {
+          if (max !== undefined && numericValue > max) numericValue = max;
+          if (numericValue < min) numericValue = min;
+          onValueChange(String(numericValue)); // Format to string after validation
+      }
+  };
+  return (
+    <View style={[styles.inputGroup, inputGroupStyleOverride]}> {/* Added inputGroupStyleOverride */}
+      {label && <Text style={styles.label}>{label}</Text>}
+      <View style={styles.numberInputContainer}>
+        <NumberInputButton onPress={() => onDecrement(String(value), step)} iconName="remove-circle-outline" disabled={editable === false || (parseFloat(value) <= min && String(value) !== '')} />
+        <TextInput
+          style={styles.numberInput}
+          value={String(value)} // Ensure value is always a string for input
+          onChangeText={handleTextChange} // Use custom handler
+          onBlur={handleBlur} // Use custom blur handler for validation
+          placeholder={placeholder || String(min)}
+          keyboardType={keyboardType} // This is a hint for mobile, 'number' for web
+          editable={editable}
+        />
+        <NumberInputButton onPress={() => onIncrement(String(value), step)} iconName="add-circle-outline" disabled={editable === false || (max !== undefined && parseFloat(value) >= max && String(value) !== '')} />
+      </View>
+    </View>
+  );
+};
+
+const ChipDisplay = ({ value, count, style, size = 'large', activeDenominations }) => {
+  // Determine chip color based on its value's index in activeDenominations
+  let chipData = defaultChipColor; // Fallback color
+
+  if (activeDenominations && activeDenominations.length > 0) {
+      const chipIndex = activeDenominations.indexOf(value);
+      if (chipIndex !== -1) { // Check if the value is in active denominations
+          chipData = orderedChipColors[chipIndex % orderedChipColors.length]; // Cycle through colors if more denoms than colors
+      }
+  }
+
+  // Dynamic sizing
+  let chipSize, innerRingSize, borderThickness, textSize;
+  if (size === 'small') {
+    chipSize = 44; innerRingSize = chipSize * 0.6; borderThickness = 2; textSize = '10px';
+  } else { // Default to 'large'
+    chipSize = 80; innerRingSize = chipSize * 0.68; borderThickness = 3; textSize = '18px';
+  }
+
+  return (
+    <View style={[styles.chipContainer, style]}> {/* Allow external style overrides */}
+      <View style={[
+          styles.chipOuter,
+          {
+            backgroundColor: chipData.bg, borderColor: chipData.border,
+            width: chipSize, height: chipSize, borderRadius: chipSize / 2,
+            borderWidth: borderThickness,
+          }
+      ]}>
+        <View style={[
+            styles.chipInnerRing,
+            {
+                backgroundColor: chipData.innerRing, width: innerRingSize,
+                height: innerRingSize, borderRadius: innerRingSize / 2,
+            }
+        ]}>
+            <Text style={[styles.chipTextValue, { color: chipData.text, fontSize: textSize }]}>
+                ${value % 1 === 0 ? value : value.toFixed(2)}
+            </Text>
+        </View>
+      </View>
+      {count !== undefined && <Text style={styles.chipCountText}>{count} chips</Text>}
+    </View>
+  );
+};
+
+
+const ChipSetupScreen = ({ onSetupComplete, setActiveTab, activeDenominationsApp }) => {
+  const scrollRef = useRef(null);
+  useEffect(() => {
+    if (scrollRef.current) {
+      if (typeof scrollRef.current.scrollTo === 'function') scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      else scrollRef.current.scrollTop = 0;
+    }
+  }, []);
+
+  const [numPlayers, setNumPlayers] = useState('5');
+  const [buyInAmount, setBuyInAmount] = useState('100');
+  const [totalPot, setTotalPot] = useState(0);
+  const [activeDenominationsSetup, setActiveDenominationsSetup] = useState([]);
+  const [editablePlayerStackSetup, setEditablePlayerStackSetup] = useState({});
+  const [totalPlayerChipsSetup, setTotalPlayerChipsSetup] = useState(0);
+  const [totalPlayerValueSetup, setTotalPlayerValueSetup] = useState(0);
+  const [totalChipsNeededSetup, setTotalChipsNeededSetup] = useState({});
+  const [blindsSuggestion, setBlindsSuggestion] = useState({ small: 0, big: 0 });
+  const [showSetupResults, setShowSetupResults] = useState(false);
+  const [setupErrorMessage, setSetupErrorMessage] = useState('');
+
+  const updateNumPlayers = (val) => setNumPlayers(val);
+  const updateBuyInAmount = (val) => setBuyInAmount(val);
+
+  const handleIncrementDecrement = (currentValStr, step, setter) => {
+    let currentVal = parseFloat(currentValStr);
+    if (isNaN(currentVal)) currentVal = 0;
+    let newValue = step > 0 ? currentVal + step : currentVal - Math.abs(step);
+    setter(String(Math.max(0, newValue)));
+  };
+
+  useEffect(() => {
+    const players = parseFloat(numPlayers); const buyIn = parseFloat(buyInAmount);
+    if (!isNaN(players) && players > 0 && !isNaN(buyIn) && buyIn > 0) setTotalPot(players * buyIn);
+    else setTotalPot(0);
+  }, [numPlayers, buyInAmount]);
+
+  const getDenominationsToUse = useCallback((buyInVal) => {
+    const stdChips = [0.25, 0.50, 1, 5, 10, 25, 50, 100, 500, 1000];
+    if (buyInVal <= 0 || stdChips.length === 0) return [];
+    const target_C2_value = buyInVal / 10;
+    let C2_index = -1; let min_diff = Infinity;
+    for (let i = 0; i < stdChips.length; i++) {
+      const diff = Math.abs(stdChips[i] - target_C2_value);
+      if (diff < min_diff) { min_diff = diff; C2_index = i; }
+      else if (diff === min_diff && stdChips[i] < stdChips[C2_index]) C2_index = i;
+    }
+    if (C2_index === -1) C2_index = 0;
+    let final_C1, final_C2, final_C3;
+    if (stdChips.length < 3) return stdChips.sort((a,b) => a-b);
+    if (C2_index === 0) {
+      final_C1 = stdChips[0]; final_C2 = stdChips.length > 1 ? stdChips[1] : undefined; final_C3 = stdChips.length > 2 ? stdChips[2] : undefined;
+    } else if (C2_index === stdChips.length - 1) {
+      final_C3 = stdChips[stdChips.length - 1]; final_C2 = stdChips.length > 1 ? stdChips[stdChips.length - 2] : undefined; final_C1 = stdChips.length > 2 ? stdChips[stdChips.length - 3] : undefined;
+    } else {
+      final_C1 = stdChips[C2_index - 1]; final_C2 = stdChips[C2_index]; final_C3 = stdChips[C2_index + 1];
+    }
+    return [final_C1, final_C2, final_C3].filter(d => d !== undefined && d !== null).sort((a, b) => a - b);
+  }, []);
+
+  const calculateDefaultPlayerStack = useCallback((targetBuyIn, currentActiveDenominations) => {
+    const n = currentActiveDenominations.length;
+    if (n === 0 || targetBuyIn <= 0) return {};
+    let stack = {}; currentActiveDenominations.forEach(d => stack[d] = 0);
+    let tempBuyIn = targetBuyIn; let countsArray = new Array(n).fill(0);
+    const minChipTargets = [10, 8];
+    for (let i = 0; i < n - 1; i++) {
+        if (tempBuyIn <= 0 || currentActiveDenominations[i] <= 0) continue;
+        let num_di = minChipTargets[i] || 1;
+        if (currentActiveDenominations[i] * num_di > tempBuyIn * 0.75 && tempBuyIn > currentActiveDenominations[i]) {
+            num_di = Math.floor(tempBuyIn * 0.25 / currentActiveDenominations[i]);
+            num_di = Math.max(1, num_di);
+        }
+        num_di = Math.min(num_di, Math.floor(tempBuyIn / currentActiveDenominations[i]));
+        num_di = Math.max(0, num_di);
+        countsArray[i] = num_di;
+        tempBuyIn -= countsArray[i] * currentActiveDenominations[i];
+    }
+    if (n > 0 && tempBuyIn > 0 && currentActiveDenominations[n - 1] > 0) {
+        countsArray[n - 1] += Math.floor(tempBuyIn / currentActiveDenominations[n - 1]);
+        tempBuyIn -= Math.floor(tempBuyIn / currentActiveDenominations[n - 1]) * currentActiveDenominations[n - 1];
+    }
+    if (tempBuyIn > 0.001 && currentActiveDenominations[0] > 0 && n > 0) {
+        countsArray[0] += Math.round(tempBuyIn / currentActiveDenominations[0]);
+    }
+    currentActiveDenominations.forEach((denom, index) => stack[denom] = Math.max(0, Math.round(countsArray[index])));
+    currentActiveDenominations.forEach(denom => { if (stack[denom] === 0) stack[denom] = 1; });
+    let currentValueAfterMins = 0; currentActiveDenominations.forEach(d => currentValueAfterMins += (stack[d] || 0) * d);
+    let difference = targetBuyIn - currentValueAfterMins;
+    let attempts = 0;
+    while (Math.abs(difference) > 0.001 && attempts < 20) {
+        attempts++; let adjusted = false;
+        if (difference > 0) {
+            const sortedDenomsAdd = [...currentActiveDenominations].sort((a, b) => a - b);
+            for (const denom of sortedDenomsAdd) {
+                if (difference >= denom) { stack[denom]++; difference -= denom; adjusted = true; break; }
+            }
+            if (!adjusted && difference > 0.001 && sortedDenomsAdd.length > 0) { stack[sortedDenomsAdd[0]]++; difference -= sortedDenomsAdd[0];}
+        } else {
+            let excess = -difference;
+            const sortedDenomsRemove = [...currentActiveDenominations].sort((a, b) => b - a);
+            for (const denom of sortedDenomsRemove) {
+                if (excess <= 0.001) break;
+                if (stack[denom] > 1 && excess >= denom) { stack[denom]--; excess -= denom; adjusted = true; break; }
+            }
+            if (!adjusted && excess > 0.001 && sortedDenomsRemove.length > 0) {
+                const smallestToRemove = sortedDenomsRemove[sortedDenomsRemove.length - 1];
+                if(stack[smallestToRemove] > 1){ stack[smallestToRemove]--; excess -= smallestToRemove; }
+            }
+        }
+        currentValueAfterMins = 0; currentActiveDenominations.forEach(d => currentValueAfterMins += (stack[d] || 0) * d);
+        difference = targetBuyIn - currentValueAfterMins;
+        if (!adjusted && Math.abs(difference) < (currentActiveDenominations[0] || 0.01)) break;
+    }
+    let uniquenessPassIterations = 0; const MAX_UNIQUENESS_PASSES = currentActiveDenominations.length * 3;
+    while(uniquenessPassIterations < MAX_UNIQUENESS_PASSES){
+        uniquenessPassIterations++;
+        const countsMap = new Map();
+        currentActiveDenominations.forEach(d => {
+            const c = stack[d];
+            if (c > 0) {
+                if (!countsMap.has(c)) countsMap.set(c, []);
+                countsMap.get(c).push(d);
+            }
+        });
+        let fixedDuplicateThisIteration = false;
+        for (const [countVal, denomsWithCount] of countsMap) {
+            if (denomsWithCount.length > 1) {
+                const denomToAdjust = denomsWithCount.sort((a,b) => a-b)[0];
+                const nextCount = countVal + 1;
+                if (!countsMap.has(nextCount)) { stack[denomToAdjust]++; fixedDuplicateThisIteration = true; break; }
+                const prevCount = countVal - 1;
+                if (countVal > 1 && !countsMap.has(prevCount)) { stack[denomToAdjust]--; fixedDuplicateThisIteration = true; break; }
+            }
+        }
+        if (!fixedDuplicateThisIteration) break;
+    }
+    currentActiveDenominations.forEach(denom => stack[denom] = Math.max(1, Math.round(stack[denom] || 1)));
+    let finalCalculatedValue = 0; currentActiveDenominations.forEach(d => finalCalculatedValue += (stack[d] || 0) * d);
+    if (finalCalculatedValue > targetBuyIn + 0.001) {
+        let excessToTrim = finalCalculatedValue - targetBuyIn;
+        const sortedDenomsForTrimming = [...currentActiveDenominations].sort((a, b) => a - b);
+        for (const denom of sortedDenomsForTrimming) {
+            if (excessToTrim <= 0.001) break;
+            while ((stack[denom] || 0) > 0 && excessToTrim >= denom) {
+                if (stack[denom] > 1 || (stack[denom] === 1 && finalCalculatedValue - denom >= targetBuyIn - (currentActiveDenominations[0] || 0.01) )) {
+                     stack[denom]--;
+                     excessToTrim -= denom;
+                     finalCalculatedValue -= denom;
+                } else break;
+            }
+        }
+    }
+    currentActiveDenominations.forEach(denom => stack[denom] = Math.max(0, stack[denom]));
+    return stack;
+  }, []);
+
+  const updateSetupOutputs = useCallback(() => {
+    let currentTotalChips = 0; let currentTotalValue = 0; let currentSmallestDenom = -1;
+    const currentTotalChipsNeeded = {};
+    activeDenominationsSetup.forEach(denom => {
+        const count = editablePlayerStackSetup[denom] || 0;
+        if (count > 0) if (currentSmallestDenom === -1 || denom < currentSmallestDenom) currentSmallestDenom = denom;
+        currentTotalChips += count; currentTotalValue += count * denom;
+        const numPlayersVal = parseFloat(numPlayers);
+        if (numPlayersVal > 0) currentTotalChipsNeeded[denom] = count * numPlayersVal;
+        else currentTotalChipsNeeded[denom] = 0;
+    });
+    setTotalPlayerChipsSetup(currentTotalChips); setTotalPlayerValueSetup(currentTotalValue);
+    setTotalChipsNeededSetup(currentTotalChipsNeeded);
+    if (currentSmallestDenom > 0) setBlindsSuggestion({ small: currentSmallestDenom, big: currentSmallestDenom * 2 });
+    else setBlindsSuggestion({ small: 0, big: 0 });
+  }, [activeDenominationsSetup, editablePlayerStackSetup, numPlayers]);
+
+  useEffect(() => {
+    if (activeDenominationsSetup.length > 0) updateSetupOutputs();
+  }, [editablePlayerStackSetup, activeDenominationsSetup, numPlayers, updateSetupOutputs]);
+
+  const performRedistributionAndAdjustUI = useCallback((adjustedDenom, newCountInput) => {
+    const targetBuyIn = parseFloat(buyInAmount);
+    if (isNaN(targetBuyIn) || targetBuyIn <= 0 || !activeDenominationsSetup || activeDenominationsSetup.length === 0) {
+        setEditablePlayerStackSetup(prev => ({ ...prev, [adjustedDenom]: Math.max(0, parseInt(String(newCountInput), 10) || 0) }));
+        return;
+    }
+    let newCount = Math.max(0, parseInt(String(newCountInput), 10) || 0);
+    let workingStack = { ...editablePlayerStackSetup };
+    workingStack[adjustedDenom] = newCount;
+    let iterations = 0; const MAX_ITERATIONS = 30;
+    while (iterations < MAX_ITERATIONS) {
+        iterations++;
+        let currentValue = 0;
+        activeDenominationsSetup.forEach(d => currentValue += (workingStack[d] || 0) * d);
+        let differenceToTarget = targetBuyIn - currentValue;
+        if (Math.abs(differenceToTarget) < 0.001) break;
+        let changedThisLoop = false;
+        if (differenceToTarget > 0) {
+            const sortedDenomsAdd = [...activeDenominationsSetup].sort((a, b) => a - b);
+            for (const denom of sortedDenomsAdd) {
+                if (denom === adjustedDenom && differenceToTarget < denom) continue;
+                if (differenceToTarget >= denom) {
+                    workingStack[denom] = (workingStack[denom] || 0) + 1;
+                    changedThisLoop = true; break;
+                }
+            }
+            if (!changedThisLoop && differenceToTarget > 0.001 && sortedDenomsAdd.length > 0) {
+                const smallestDenomAvailable = sortedDenomsAdd.find(d => d !== adjustedDenom) || sortedDenomsAdd[0];
+                workingStack[smallestDenomAvailable] = (workingStack[smallestDenomAvailable] || 0) + 1;
+                changedThisLoop = true;
+            }
+        } else {
+            let excessToRemove = -differenceToTarget;
+            const sortedDenomsRemove = [...activeDenominationsSetup].sort((a, b) => b - a);
+            for (const denom of sortedDenomsRemove) {
+                if (excessToRemove <= 0.001) break;
+                if (denom === adjustedDenom && excessToRemove < denom) continue;
+                if ((workingStack[denom] || 0) > 0) {
+                    workingStack[denom]--;
+                    excessToRemove -= denom;
+                    changedThisLoop = true; break;
+                }
+            }
+        }
+        if (!changedThisLoop) break;
+    }
+    let finalCurrentValue = 0; activeDenominationsSetup.forEach(d => finalCurrentValue += (workingStack[d] || 0) * d);
+    if (finalCurrentValue > targetBuyIn + 0.001) {
+        let excessToTrim = finalCurrentValue - targetBuyIn;
+        const sortedDenomsForTrimming = [...activeDenominationsSetup].sort((a,b) => a-b);
+        for (const denom of sortedDenomsForTrimming) {
+            if(excessToTrim <= 0.001) break;
+            while((workingStack[denom] || 0) > 0 && excessToTrim >= denom) {
+                if (denom === adjustedDenom && (workingStack[denom] || 0) <= newCount) break;
+                workingStack[denom]--;
+                excessToTrim -= denom;
+            }
+        }
+    }
+    activeDenominationsSetup.forEach(d => workingStack[d] = Math.max(0, Math.round(workingStack[d] || 0)));
+    setEditablePlayerStackSetup(workingStack);
+  }, [buyInAmount, activeDenominationsSetup, editablePlayerStackSetup]);
+
+  const handleDefineChips = () => {
+    setSetupErrorMessage('');
+    const playersVal = parseFloat(numPlayers); const buyInVal = parseFloat(buyInAmount);
+    if (isNaN(playersVal) || playersVal <= 0) {
+      setSetupErrorMessage("Please enter a valid number of players."); setShowSetupResults(false);
+      if (onSetupComplete) onSetupComplete([], {}, '0', '0', true, []); return;
+    }
+    if (isNaN(buyInVal) || buyInVal <= 0) {
+      setSetupErrorMessage("Please enter a valid reference buy-in amount."); setShowSetupResults(false);
+      if (onSetupComplete) onSetupComplete([], {}, '0', '0', true, []); return;
+    }
+    const denoms = getDenominationsToUse(buyInVal);
+    if (denoms.length === 0) {
+      setSetupErrorMessage("Could not determine chip denominations. Try a different amount."); setShowSetupResults(false);
+      setActiveDenominationsSetup([]); setEditablePlayerStackSetup({});
+      if (onSetupComplete) onSetupComplete([], {}, '0', '0', true, []); return;
+    }
+    setActiveDenominationsSetup(denoms);
+    const stack = calculateDefaultPlayerStack(buyInVal, denoms);
+    setEditablePlayerStackSetup(stack);
+    setShowSetupResults(true);
+    if (onSetupComplete) onSetupComplete(denoms, stack, numPlayers, buyInAmount, false, denoms);
+  };
+
+  const handleStackChipInputChange = (denom, textValue) => {
+    setEditablePlayerStackSetup(prev => {
+        const newStack = {...prev};
+        if (String(textValue).trim() === '') newStack[denom] = '';
+        else { const count = parseInt(textValue, 10); newStack[denom] = isNaN(count) ? '' : count; }
+        return newStack;
+    });
+  };
+  
+  const handleStackChipInputBlur = (denom) => {
+    const currentValue = editablePlayerStackSetup[denom]; let finalCount = parseInt(String(currentValue), 10);
+    if (currentValue === '' || isNaN(finalCount) || finalCount < 0) finalCount = 0;
+    performRedistributionAndAdjustUI(denom, finalCount);
+  };
+
+  const handleStackChipIncrement = (denom) => {
+    const currentCount = parseInt(String(editablePlayerStackSetup[denom]), 10) || 0;
+    performRedistributionAndAdjustUI(denom, currentCount + 1);
+  };
+
+  const handleStackChipDecrement = (denom) => {
+    const currentCount = parseInt(String(editablePlayerStackSetup[denom]), 10) || 0;
+    performRedistributionAndAdjustUI(denom, Math.max(0, currentCount - 1));
+  };
+
+  return (
+    <ScrollView ref={scrollRef} style={styles.screenContainer} contentContainerStyle={styles.scrollContentContainer}>
+      <View style={styles.section}>
+        <NumberInputControl label="Number of Players (for initial setup):" value={numPlayers} onValueChange={updateNumPlayers} onIncrement={(val, step) => handleIncrementDecrement(val, step, setNumPlayers)} onDecrement={(val, step) => handleIncrementDecrement(val, -step, setNumPlayers)} min={1}/>
+        <NumberInputControl label="Reference Buy-in: $" value={buyInAmount} onValueChange={updateBuyInAmount} onIncrement={(val, step) => handleIncrementDecrement(val, step, setBuyInAmount)} onDecrement={(val, step) => handleIncrementDecrement(val, -step, setBuyInAmount)} step={5.00} min={1}/>
+        <View style={styles.totalPotDisplay}><Text style={styles.totalPotText}>Reference Total Pot: <Text style={styles.totalPotValue}> ${totalPot.toFixed(2)}</Text></Text></View>
+        <TouchableOpacity style={styles.primaryButton} onPress={handleDefineChips}><Text style={styles.primaryButtonText}>Define Chip Denominations & Stacks</Text></TouchableOpacity>
+      </View>
+
+      {setupErrorMessage ? <Text style={styles.errorMessage}>{setupErrorMessage}</Text> : null}
+
+      {showSetupResults && (
+        <View style={styles.resultsSection}>
+          <Text style={styles.sectionTitle}><Ionicons name="layers" size={22} color={colors.textAccent} /> Chip Distribution <Ionicons name="layers" size={22} color={colors.textAccent} /></Text>
+          <View style={styles.subSection}>
+            <Text style={styles.subSectionTitle}>Adjustable Stack per Player:</Text>
+            {activeDenominationsSetup.map(denom => (
+              <View key={denom} style={styles.chipAdjustmentRow}>
+                <ChipDisplay value={denom} activeDenominations={activeDenominationsSetup} style={{ marginRight: 15 }} />
+                <View style={styles.setupNumberInputCell}>
+                    <NumberInputControl
+                        value={editablePlayerStackSetup[denom] !== undefined ? String(editablePlayerStackSetup[denom]) : '0'}
+                        onValueChange={(text) => handleStackChipInputChange(denom, text)}
+                        onBlur={() => handleStackChipInputBlur(denom)}
+                        onIncrement={() => handleStackChipIncrement(denom)}
+                        onDecrement={() => handleStackChipDecrement(denom)}
+                        min={0}
+                        keyboardType="numeric"
+                        inputGroupStyleOverride={{ marginBottom: 0 }}
+                    />
+                </View>
+              </View>
+            ))}
+            <Text style={styles.summaryText}>Total chips per player: {totalPlayerChipsSetup}</Text>
+            <Text style={styles.summaryText}>Total value per player: ${totalPlayerValueSetup.toFixed(2)}</Text>
+          </View>
+
+          <View style={[styles.subSection, styles.blindsSuggestionContainer]}>
+            <Text style={styles.subSectionTitle}><Ionicons name="heart" size={18} color={colors.textAccent} /> Suggested Blinds <Ionicons name="spade" size={18} color={colors.textAccent} /></Text>
+            {blindsSuggestion.small > 0 ? (
+              <View style={styles.blindsDisplay}><Text style={styles.blindsTextSmall}>Small Blind: <Text style={styles.blindAmountText}>${blindsSuggestion.small.toFixed(2)}</Text></Text><Text style={styles.blindsTextBig}>Big Blind: <Text style={styles.blindAmountText}>${blindsSuggestion.big.toFixed(2)}</Text></Text></View>
+            ) : <Text style={styles.infoText}>Not enough chip types or counts to suggest blinds.</Text>}
+          </View>
+
+          <View style={styles.subSection}>
+            <Text style={styles.subSectionTitle}>Total Chips Needed (for current setup):</Text>
+            <View style={styles.totalChipsNeededGrid}>
+                {activeDenominationsSetup.map(denom => {
+                    const countNeeded = totalChipsNeededSetup[denom] || 0;
+                    if (countNeeded > 0) return (<View key={`total-${denom}`} style={styles.totalChipItem}><ChipDisplay value={denom} activeDenominations={activeDenominationsSetup} /><Text style={styles.totalChipCountText}>{countNeeded} chips</Text></View>);
+                    return null;
+                })}
+            </View>
+             {Object.values(totalChipsNeededSetup).every(c => c === 0) && parseFloat(numPlayers) > 0 && <Text style={styles.infoText}>No chips needed.</Text>}
+             {parseFloat(numPlayers) === 0 && <Text style={styles.infoText}>Enter players to see totals.</Text>}
+          </View>
+        </View>
+      )}
+    </ScrollView>
+  );
+};
+
+const PokerTableMock = ({ players = [], onSeatPress }) => {
+    const windowWidth = Dimensions.get('window').width;
+    const tableWidth = Math.min(windowWidth * 0.85, 450); 
+    const tableHeight = tableWidth / 1.8; 
+    const seatSize = Math.max(30, tableWidth / 12); 
+    const numPlayers = players.length;
+
+    const getPlayerPosition = (index, count) => {
+        if (count === 0) return { top: '50%', left: '50%' }; 
+        let angleOffset = 0; if (count > 0 && count % 2 === 0) angleOffset = Math.PI / count; 
+        const angle = (index / count) * 2 * Math.PI - (Math.PI / 2) + angleOffset; 
+        const xRadius = (tableWidth / 2) - (seatSize / 2) - (styles.pokerTableMock.borderWidth ? parseFloat(styles.pokerTableMock.borderWidth) : 10); 
+        const yRadius = (tableHeight / 2) - (seatSize / 2) - (styles.pokerTableMock.borderWidth ? parseFloat(styles.pokerTableMock.borderWidth) : 10);
+        const left = (tableWidth / 2) + xRadius * Math.cos(angle) - (seatSize / 2);
+        const top = (tableHeight / 2) + yRadius * Math.sin(angle) - (seatSize / 2);
+        return { top: `${top}px`, left: `${left}px` };
+    };
+
+    return (
+        <View style={styles.pokerTableContainerMock}>
+            <View style={[styles.pokerTableMock, { width: tableWidth, height: tableHeight }]}>
+                <View style={styles.pokerTableInnerLineMock} />
+                {players.map((player, index) => (
+                    <TouchableOpacity key={player.id || `seat-${index}`} style={[styles.playerSeatMock, getPlayerPosition(index, numPlayers), {width: seatSize, height: seatSize, borderRadius: seatSize/2}]} onPress={() => onSeatPress && onSeatPress(player.id)}>
+                        <Text style={styles.playerSeatTextMock}>{player.name && player.name.length >= 1 ? player.name.substring(0, 3) : `P${index + 1}`}</Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
+        </View>
+    );
+};
+
+const PayoutsScreen = ({
+    activeDenominationsApp,
+    editablePlayerStackApp, 
+    globalNumPlayersSetup, 
+    globalBuyInAmountSetup, 
+    playersPayout, 
+    setPlayersPayout, 
+    nextPlayerIdPayout, 
+    setNextPlayerIdPayout,
+    setActiveTab, 
+    addSessionToHistory 
+}) => {
+  const scrollRef = useRef(null);
+  useEffect(() => { if (scrollRef.current) { if (typeof scrollRef.current.scrollTo === 'function') scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' }); else scrollRef.current.scrollTop = 0;}}, []); 
+
+  const [totalActualBuyIns, setTotalActualBuyIns] = useState(0);
+  const [totalPayoutCalculated, setTotalPayoutCalculated] = useState(0);
+
+  const playerEntryRefs = useRef({});
+  useEffect(() => { playersPayout.forEach(player => { if (!playerEntryRefs.current[player.id]) playerEntryRefs.current[player.id] = React.createRef(); }); }, [playersPayout]);
+  const handleSeatPress = (playerId) => { const ref = playerEntryRefs.current[playerId]; if (ref && ref.current && typeof ref.current.scrollIntoView === 'function') ref.current.scrollIntoView({ behavior: 'smooth', block: 'center' }); else console.warn(`Could not scroll to player ID: ${playerId}. Ref:`, ref);};
+
+  const handleIncrementDecrementPayoutChips = (currentValStr, step, setter) => { let currentVal = parseFloat(currentValStr); if (isNaN(currentVal)) currentVal = 0; const newValue = step > 0 ? currentVal + step : currentVal - Math.abs(step); setter(String(Math.max(0, newValue))); };
+  const calculatePlayerPayoutValue = useCallback((playerChips) => { let totalValue = 0; if (activeDenominationsApp && activeDenominationsApp.length > 0) activeDenominationsApp.forEach(denom => totalValue += (playerChips[denom] || 0) * denom); return totalValue; }, [activeDenominationsApp]);
+  const updateOverallPayoutTotals = useCallback(() => { let totalBuyIns = 0; let totalPayouts = 0; playersPayout.forEach(player => { totalBuyIns += parseFloat(player.buyIn) || 0; totalPayouts += player.payoutValue || 0; }); setTotalActualBuyIns(totalBuyIns); setTotalPayoutCalculated(totalPayouts);}, [playersPayout]);
+  useEffect(() => { updateOverallPayoutTotals(); }, [playersPayout, updateOverallPayoutTotals]);
+
+  const addPlayerEntryPayout = (defaultBuyIn = 0.00) => {
+    if (!activeDenominationsApp || activeDenominationsApp.length === 0) { Alert.alert("Setup Required", "Please complete Chip Setup first."); if(setActiveTab) setActiveTab("Chip Setup"); return; }
+    const newPlayerId = `payout_player_${nextPlayerIdPayout}`;
+    const initialChips = activeDenominationsApp.reduce((acc, denom) => { acc[denom] = editablePlayerStackApp[denom] !== undefined ? editablePlayerStackApp[denom] : 0; return acc;}, {});
+    const newPlayer = { id: newPlayerId, name: `Player ${nextPlayerIdPayout + 1}`, buyIn: String(defaultBuyIn.toFixed(2)), chips: initialChips, payoutValue: calculatePlayerPayoutValue(initialChips),};
+    setPlayersPayout(prev => [...prev, newPlayer]); setNextPlayerIdPayout(prev => prev + 1);
+  };
+
+  const updatePlayerRecordPayout = (playerId, field, value, denomValue = null) => {
+    setPlayersPayout(prevPlayers => prevPlayers.map(p => {
+        if (p.id === playerId) { const updatedPlayer = { ...p };
+          if (field === 'name') updatedPlayer.name = value;
+          else if (field === 'buyIn') { let numericBuyIn = parseFloat(value); if (isNaN(numericBuyIn) || numericBuyIn < 0) numericBuyIn = 0; updatedPlayer.buyIn = String(numericBuyIn.toFixed(2)); } 
+          else if (field === 'chips' && denomValue !== null) { updatedPlayer.chips = { ...p.chips, [denomValue]: parseInt(value, 10) || 0 }; updatedPlayer.payoutValue = calculatePlayerPayoutValue(updatedPlayer.chips); }
+          return updatedPlayer; } return p; }) );};
+
+  const removePlayerEntryPayout = (playerId) => { setPlayersPayout(prev => prev.filter(p => p.id !== playerId)); if (playerEntryRefs.current[playerId]) delete playerEntryRefs.current[playerId]; };
+  
+  const handleFinalizeSession = () => {
+      const difference = totalActualBuyIns - totalPayoutCalculated;
+      if (Math.abs(difference) > 0.01 * playersPayout.length) { 
+          Alert.alert("Discrepancy Alert", `Total Buy-ins ($${totalActualBuyIns.toFixed(2)}) and Total Payouts ($${totalPayoutCalculated.toFixed(2)}) do not match perfectly. Difference: $${difference.toFixed(2)}.\n\nAre you sure you want to finalize?`);
+      }
+      const sessionData = {
+          id: `session_${new Date().getTime()}_${Math.random().toString(36).substr(2, 5)}`, 
+          timestamp: new Date().toISOString(),
+          players: playersPayout.map(p => ({
+              id: p.id, 
+              name: p.name,
+              buyIn: parseFloat(p.buyIn) || 0,
+              payoutValue: p.payoutValue || 0,
+              net: (p.payoutValue || 0) - (parseFloat(p.buyIn) || 0),
+          })),
+          totalActualBuyIns,
+          totalPayoutCalculated,
+          denominationsUsed: [...activeDenominationsApp], 
+          numPlayers: playersPayout.length,
+      };
+      if (addSessionToHistory) {
+          addSessionToHistory(sessionData);
+      }
+      Alert.alert("Session Finalized (Mock)", "Session data 'saved' to history (for this browser session). Player list is now cleared for a new game.");
+      console.log("Mock Saving Session Data:", sessionData);
+      setPlayersPayout([]); 
+      setNextPlayerIdPayout(0); 
+  };
+
+  if (!activeDenominationsApp || activeDenominationsApp.length === 0) {
+    return (<ScrollView ref={scrollRef} style={styles.screenContainer} contentContainerStyle={styles.scrollContentContainer}><Text style={styles.screenTitle}>Payouts</Text><View style={styles.payoutInstructionsContainer}><Ionicons name="alert-circle-outline" size={30} color={colors.primary} style={{marginBottom:10}} /><Text style={styles.payoutInstructionsText}>Please run "Chip Setup" first.</Text><TouchableOpacity style={styles.secondaryButton} onPress={() => setActiveTab && setActiveTab("Chip Setup")}><Text style={styles.secondaryButtonText}>Go to Chip Setup</Text></TouchableOpacity></View></ScrollView>);
+  }
+
+  return (
+    <View style={styles.screenContainerWithStickyFooter}>
+      <ScrollView ref={scrollRef} style={styles.payoutsScrollableContent} contentContainerStyle={styles.scrollContentContainer}>
+        <Text style={styles.screenTitle}><Ionicons name="cash" size={24} color={colors.textAccent}/> Payout Calculator <Ionicons name="cash" size={24} color={colors.textAccent}/></Text>
+        {playersPayout && playersPayout.length > 0 && activeDenominationsApp && activeDenominationsApp.length > 0 && (<View style={styles.tableVisualizationSection}><Text style={styles.subSectionTitle}><Ionicons name="tablet-landscape" size={20} color={colors.textAccent}/> Live Table View <Ionicons name="tablet-landscape" size={20} color={colors.textAccent}/></Text><PokerTableMock players={playersPayout} onSeatPress={handleSeatPress} /></View>)}
+        <TouchableOpacity style={styles.primaryButton} onPress={() => addPlayerEntryPayout(parseFloat(globalBuyInAmountSetup) || 0)}><Text style={styles.primaryButtonText}><Ionicons name="add-circle" size={20} color={'#064E3B'}/> Add Player</Text></TouchableOpacity>
+        <View style={styles.playerEntriesContainer}>
+          {playersPayout.map((player, index) => (
+            <View key={player.id} style={styles.playerEntry} ref={playerEntryRefs.current[player.id]}>
+              <View style={styles.playerHeader}><TextInput style={styles.playerNameInput} value={player.name} onChangeText={(text) => updatePlayerRecordPayout(player.id, 'name', text)} placeholder="Player Name"/><TouchableOpacity onPress={() => removePlayerEntryPayout(player.id)} style={styles.removePlayerButton}><Ionicons name="trash-bin" size={20} color="#FFFFFF" /></TouchableOpacity></View>
+              <NumberInputControl label="Buy-in Amount: $" value={player.buyIn} onValueChange={(val) => updatePlayerRecordPayout(player.id, 'buyIn', val)} onIncrement={(val) => { const c = parseFloat(val)||0; const i = parseFloat(globalBuyInAmountSetup)||1; updatePlayerRecordPayout(player.id, 'buyIn', (c+i).toFixed(2));}} onDecrement={(val) => { const c = parseFloat(val)||0; const d = parseFloat(globalBuyInAmountSetup)||1; updatePlayerRecordPayout(player.id, 'buyIn', (Math.max(0,c-d)).toFixed(2));}} step={1.00} min={0}/>
+              <Text style={styles.subSectionTitleSmall}>Chip Counts at Cash Out:</Text>
+              {activeDenominationsApp.map(denom => (
+                <View key={`${player.id}-chip-${denom}`} style={styles.chipInputRowPayout}>
+                    <ChipDisplay value={denom} style={{marginRight: 10}} activeDenominations={activeDenominationsApp}/>
+                    <View style={styles.payoutNumberInputCell}> 
+                        <NumberInputControl
+                            value={String(player.chips[denom] || 0)}
+                            onValueChange={(val) => updatePlayerRecordPayout(player.id, 'chips', val, denom)}
+                            onIncrement={(val, s) => handleIncrementDecrementPayoutChips(val, s, (newVal) => updatePlayerRecordPayout(player.id, 'chips', newVal, denom))}
+                            onDecrement={(val, s) => handleIncrementDecrementPayoutChips(val, -s, (newVal) => updatePlayerRecordPayout(player.id, 'chips', newVal, denom))}
+                            step={1} 
+                            min={0}
+                            inputGroupStyleOverride={{ marginBottom: 0 }} 
+                        />
+                    </View>
+                </View>))}
+              <Text style={styles.payoutValueText}>Payout: ${player.payoutValue.toFixed(2)}</Text>
+            </View>))}
+        </View>
+      </ScrollView>
+      {playersPayout.length > 0 && (<View style={styles.stickyFooterTotalsSection}><View style={styles.totalDisplayItem}><Text style={styles.totalLabelPayout}>Total Buy-ins: </Text><Text style={styles.totalValuePayout}>${totalActualBuyIns.toFixed(2)}</Text></View><View style={styles.totalDisplayItem}><Text style={styles.totalLabelPayout}>Total Payouts: </Text><Text style={styles.totalValuePayout}>${totalPayoutCalculated.toFixed(2)}</Text></View><TouchableOpacity style={[styles.primaryButton, styles.finalizeButton]} onPress={handleFinalizeSession}><Text style={styles.primaryButtonText}><Ionicons name="save" size={20} color={'#064E3B'}/> Finalize Session</Text></TouchableOpacity></View>)}
+    </View>
+  );
+};
+
+// Simple SVG Line Graph Component
+const SimpleLineGraph = ({ data, width = '100%', height = 200, selectedPlayer }) => { 
+    if (!data || data.length < 2) {
+        return <Text style={styles.infoTextGraph}>Not enough data to display graph.</Text>;
+    }
+    const gradientId = `lineGraphGradient-${selectedPlayer ? selectedPlayer.replace(/\s+/g, '-') : 'all'}`;
+    const padding = { top: 20, right: 20, bottom: 40, left: 45 }; // Adjusted bottom/left padding for date labels
+    const svgWidth = typeof width === 'string' ? 350 : width; 
+    const svgHeight = height;
+    const chartWidth = svgWidth - padding.left - padding.right;
+    const chartHeight = svgHeight - padding.top - padding.bottom;
+    const values = data.map(d => d.y);
+    let minY = Math.min(...values);
+    let maxY = Math.max(...values);
+    if (minY !== 0) minY -= Math.abs(minY * 0.1) || 5;
+    if (maxY !== 0) maxY += Math.abs(maxY * 0.1) || 5;
+    if (minY === maxY) { 
+        minY -= 5; maxY +=5;
+    }
+    const rangeY = maxY - minY;
+    const scaleY = rangeY === 0 ? chartHeight / 2 : chartHeight / rangeY;
+    const scaleX = chartWidth / (data.length - 1);
+    const points = data.map((point, i) => {
+        const x = i * scaleX;
+        const y = chartHeight - (point.y - minY) * scaleY;
+        return `${x},${y}`;
+    }).join(' ');
+    const areaPoints = `${0},${chartHeight} ${points} ${chartWidth},${chartHeight}`;
+    const numYLabels = 5;
+    const yAxisLabels = [];
+    if (rangeY > 0) {
+        for (let i = 0; i <= numYLabels; i++) {
+            const value = minY + (rangeY / numYLabels) * i;
+            const yPos = chartHeight - (value - minY) * scaleY;
+            yAxisLabels.push({ value: value, y: yPos });
+        }
+    } else {
+         yAxisLabels.push({ value: minY, y: chartHeight / 2 });
+    }
+
+    // Function to format date, e.g., MM/DD
+    const formatDateLabel = (timestamp) => {
+        const date = new Date(timestamp);
+        return `${date.getMonth() + 1}/${date.getDate()}`;
+    };
+
+    return (
+        <View style={styles.graphContainer}>
+            <svg width={svgWidth} height={svgHeight} viewBox={`0 0 ${svgWidth} ${svgHeight}`}>
+                <defs>
+                    <linearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style={{stopColor: colors.primary, stopOpacity: 0.5}} />
+                        <stop offset="100%" style={{stopColor: colors.primary, stopOpacity: 0.05}} />
+                    </linearGradient>
+                </defs>
+                <g transform={`translate(${padding.left}, ${padding.top})`}>
+                    {yAxisLabels.map((label, i) => (
+                        <line key={`grid-y-${i}`} x1="0" y1={label.y} x2={chartWidth} y2={label.y} stroke={colors.graphGrid} strokeWidth="0.5" strokeDasharray="3,3" />
+                    ))}
+                     {data.map((point, i) => { // Changed from _ to point to access timestamp
+                        if (i > 0 && data.length > 2) { 
+                           const x = i * scaleX;
+                           return <line key={`grid-x-${i}`} x1={x} y1="0" x2={x} y2={chartHeight} stroke={colors.graphGrid} strokeWidth="0.5" strokeDasharray="3,3" />
+                        }
+                        return null;
+                    })}
+                    <line x1="0" y1="0" x2="0" y2={chartHeight} stroke={colors.graphAxis} strokeWidth="1" />
+                    <line x1="0" y1={chartHeight} x2={chartWidth} y2={chartHeight} stroke={colors.graphAxis} strokeWidth="1" />
+                    {yAxisLabels.map((label, i) => (
+                        <text key={`y-label-${i}`} x="-8" y={label.y + 4} fill={colors.textSecondary} fontSize="10" textAnchor="end">
+                            ${label.value.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}
+                        </text>
+                    ))}
+                    {/* X Axis Labels (Session Date) */}
+                    {data.map((point, i) => {
+                        // Determine how many labels to show based on data length to prevent overlap
+                        let showLabel = true;
+                        if (data.length > 7) { // If more than 7 data points, show fewer labels
+                            const showNth = Math.ceil(data.length / 5); // Show roughly 5 labels
+                            if (i !== 0 && i !== data.length - 1 && i % showNth !== 0) {
+                                showLabel = false;
+                            }
+                        }
+                        if (!showLabel) return null;
+                        
+                        return (
+                            <text key={`x-label-${i}`} x={i * scaleX} y={chartHeight + 20} fill={colors.textSecondary} fontSize="10" textAnchor="middle">
+                                {formatDateLabel(point.sessionTimestamp)}
+                            </text>
+                        )
+                    })}
+                    <polygon points={areaPoints} fill={`url(#${gradientId})`} />
+                    <polyline
+                        fill="none"
+                        stroke={colors.primary}
+                        strokeWidth="2.5"
+                        points={points}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    />
+                    {data.map((point, i) => (
+                         <circle key={`point-${i}`} cx={i * scaleX} cy={chartHeight - (point.y - minY) * scaleY} r="4" fill={colors.surface} stroke={colors.primary} strokeWidth="2" />
+                    ))}
+                </g>
+            </svg>
+        </View>
+    );
+};
+
+
+const HistoryStatsScreen = ({ setActiveTab, sessionHistory, playerStats, uniquePlayerNames }) => {
+  const scrollRef = useRef(null);
+  const [selectedPlayer, setSelectedPlayer] = useState(''); 
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      if (typeof scrollRef.current.scrollTo === 'function') {
+        scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      } else { 
+        scrollRef.current.scrollTop = 0;
+      }
+    }
+    if (uniquePlayerNames && uniquePlayerNames.length > 0 && !selectedPlayer) {
+        setSelectedPlayer(uniquePlayerNames[0]);
+    }
+    else if (selectedPlayer && uniquePlayerNames && !uniquePlayerNames.includes(selectedPlayer)) {
+        setSelectedPlayer(uniquePlayerNames.length > 0 ? uniquePlayerNames[0] : '');
+    }
+  }, [uniquePlayerNames, selectedPlayer]); 
+
+  const handlePlayerSelect = (event) => {
+      setSelectedPlayer(event.target.value);
+  };
+
+  const selectedPlayerData = selectedPlayer ? playerStats[selectedPlayer] : null;
+
+  if (!sessionHistory || sessionHistory.length === 0) {
+    return (
+      <ScrollView ref={scrollRef} style={styles.screenContainer} contentContainerStyle={styles.scrollContentContainer}>
+        <Text style={styles.screenTitle}>Session History & Stats</Text>
+        <View style={styles.historyEmptyState}>
+            <Ionicons name="layers-outline" size={48} color={colors.textSecondary} />
+            <Text style={styles.infoText}>No game sessions recorded yet.</Text>
+            <Text style={styles.infoText}>Complete a game in the "Payouts" tab and finalize it to see history here.</Text>
+        </View>
+      </ScrollView>
+    );
+  }
+
+  return (
+    <ScrollView ref={scrollRef} style={styles.screenContainer} contentContainerStyle={styles.scrollContentContainer}>
+      <Text style={styles.screenTitle}>Session History & Stats</Text>
+      <View style={styles.playerSelectorContainer}>
+          <Text style={styles.label}>View Stats for Player:</Text>
+          <select value={selectedPlayer} onChange={handlePlayerSelect} style={styles.playerSelectDropdown}>
+              <option value="">-- All Sessions --</option>
+              {uniquePlayerNames.map(name => <option key={name} value={name}>{name}</option>)}
+          </select>
+      </View>
+      {selectedPlayerData && (
+          <View style={styles.playerStatsCard}>
+              <Text style={styles.playerStatsTitle}><Ionicons name="person-circle-outline" size={24} color={colors.textAccent} style={{marginRight: 10}}/> {selectedPlayer}'s Performance</Text>
+              <View style={styles.playerStatRow}>
+                <Text style={styles.playerStatLabel}>Total Buy-ins:</Text>
+                <Text style={styles.playerStatValue}>${selectedPlayerData.totalBuyIn.toFixed(2)}</Text>
+              </View>
+              <View style={styles.playerStatRow}>
+                <Text style={styles.playerStatLabel}>Total Payouts:</Text>
+                <Text style={styles.playerStatValue}>${selectedPlayerData.totalPayout.toFixed(2)}</Text>
+              </View>
+              <View style={styles.playerStatRow}>
+                <Text style={styles.playerStatLabel}>Overall Net:</Text>
+                <Text style={[styles.playerStatValue, selectedPlayerData.totalNet >= 0 ? styles.historyPlayerNetPositive : styles.historyPlayerNetNegative]}>
+                    ${selectedPlayerData.totalNet.toFixed(2)}
+                </Text>
+              </View>
+              <Text style={styles.playerStatsSubtitle}><Ionicons name="stats-chart" size={20} color={colors.textAccent} style={{marginRight: 8}}/> Winnings Over Time:</Text>
+              {/* Pass the entire cumulativeNetHistory which now includes sessionTimestamp */}
+              <SimpleLineGraph data={selectedPlayerData.cumulativeNetHistory} selectedPlayer={selectedPlayer} />
+              <Text style={styles.playerStatsSubtitle}>Session Log:</Text>
+              <View style={styles.playerSessionLogContainer}>
+                {selectedPlayerData.sessions.map((session, sessionIndex) => ( 
+                    <View key={`${selectedPlayer}-session-${session.sessionId}-${sessionIndex}`} style={styles.playerSessionItem}>
+                        <Text style={styles.playerSessionDate}>{new Date(session.timestamp).toLocaleDateString()}</Text>
+                        <Text style={[styles.playerSessionNet, session.net >= 0 ? styles.historyPlayerNetPositive : styles.historyPlayerNetNegative]}>
+                            {session.net >= 0 ? '+' : ''}${session.net.toFixed(2)}
+                        </Text>
+                    </View>
+                ))}
+              </View>
+          </View>
+      )}
+      {!selectedPlayer && (
+          <>
+            <Text style={styles.sectionTitle}><Ionicons name="layers" size={22} color={colors.textAccent} /> All Game Sessions</Text>
+            {sessionHistory.map((session, index) => (
+                <View key={session.id || `session-${index}`} style={styles.historySessionCard}>
+                <Text style={styles.historySessionTimestamp}>
+                    Session: {new Date(session.timestamp).toLocaleString()}
+                </Text>
+                <View style={styles.historySessionSummary}>
+                    <Text style={styles.historySummaryText}>Players: <Text style={styles.historySummaryValue}>{session.numPlayers}</Text></Text>
+                    <Text style={styles.historySummaryText}>Total Buy-ins: <Text style={styles.historySummaryValue}>${session.totalActualBuyIns.toFixed(2)}</Text></Text>
+                    <Text style={styles.historySummaryText}>Total Payouts: <Text style={styles.historySummaryValue}>${session.totalPayoutCalculated.toFixed(2)}</Text></Text>
+                </View>
+                <Text style={styles.historyPlayerListTitle}>Player Results:</Text>
+                {session.players.map(player => ( 
+                    <View key={player.id + session.id} style={styles.historyPlayerRow}>
+                    <Text style={styles.historyPlayerName}>{player.name}</Text>
+                    <Text style={[styles.historyPlayerNet, player.net >= 0 ? styles.historyPlayerNetPositive : styles.historyPlayerNetNegative]}>
+                        Net: ${player.net.toFixed(2)}
+                    </Text>
+                    </View>
+                ))}
+                        <Text style={styles.historyDenominationsTitle}>Chips Used:</Text>
+                        <View style={styles.historyDenominationsContainer}>
+                            {session.denominationsUsed.map(denom => (
+                                <ChipDisplay key={denom + session.id} value={denom} size="small" activeDenominations={session.denominationsUsed} />
+                            ))}
+                        </View>
+                </View>
+            ))}
+          </>
+      )}
+    </ScrollView>
+  );
+};
+
+
+const Tab = createMaterialTopTabNavigator();
+
+const App = () => {
+  const [activeDenominationsApp, setActiveDenominationsApp] = useState([]); 
+  const [editablePlayerStackApp, setEditablePlayerStackApp] = useState({}); 
+  const [globalNumPlayersSetup, setGlobalNumPlayersSetup] = useState('5'); 
+  const [globalBuyInAmountSetup, setGlobalBuyInAmountSetup] = useState('100'); 
+  const [playersPayout, setPlayersPayout] = useState([]); 
+  const [nextPlayerIdPayout, setNextPlayerIdPayout] = useState(0); 
+  const [sessionHistory, setSessionHistory] = useState([]); 
+  const [playerStats, setPlayerStats] = useState({}); 
+
+  const addSessionToHistory = (sessionData) => {
+      setSessionHistory(prevHistory => [sessionData, ...prevHistory]); 
+      
+      setPlayerStats(prevStats => {
+          const newStats = JSON.parse(JSON.stringify(prevStats)); 
+          sessionData.players.forEach(p => {
+              const playerName = p.name; 
+              if (!newStats[playerName]) {
+                  newStats[playerName] = {
+                      totalBuyIn: 0,
+                      totalPayout: 0,
+                      totalNet: 0,
+                      sessions: [], 
+                      cumulativeNetHistory: [] 
+                  };
+              }
+              
+              newStats[playerName].totalBuyIn += p.buyIn;
+              newStats[playerName].totalPayout += p.payoutValue;
+              newStats[playerName].totalNet += p.net;
+
+              newStats[playerName].sessions.unshift({ 
+                  sessionId: sessionData.id,
+                  net: p.net,
+                  timestamp: sessionData.timestamp
+              });
+
+              const cumHistoryArray = newStats[playerName].cumulativeNetHistory;
+              const lastEntry = cumHistoryArray.length > 0 ? cumHistoryArray[cumHistoryArray.length - 1] : null;
+              const newCumulativeNet = (lastEntry ? lastEntry.cumulativeNet : 0) + p.net;
+              
+              cumHistoryArray.push({ 
+                  sessionTimestamp: sessionData.timestamp, // Store the timestamp for the X-axis
+                  cumulativeNet: newCumulativeNet,
+                  y: newCumulativeNet // Keep 'y' for the graph component's direct use
+              });
+          });
+          return newStats;
+      });
+  };
+
+  const handleSetupComplete = (denomsFromSetup, stack, numPlayers, buyIn, errorOccurred, actualActiveDenoms) => {
+    if (errorOccurred) {
+        setActiveDenominationsApp([]); setEditablePlayerStackApp({});
+        setPlayersPayout([]); setNextPlayerIdPayout(0); 
+    } else {
+        setActiveDenominationsApp(actualActiveDenoms); 
+        setEditablePlayerStackApp(stack);
+        setGlobalNumPlayersSetup(numPlayers);
+        setGlobalBuyInAmountSetup(buyIn);
+        const numPlayersToAutoAdd = parseInt(numPlayers, 10);
+        const defaultBuyInForAutoAdd = parseFloat(buyIn);
+        let autoAddedPlayers = []; let nextId = 0;
+        if (!isNaN(numPlayersToAutoAdd) && numPlayersToAutoAdd > 0 && !isNaN(defaultBuyInForAutoAdd)) {
+            for (let i = 0; i < numPlayersToAutoAdd; i++) {
+                const newPlayerId = `payout_player_${nextId++}`; 
+                const initialChips = actualActiveDenoms.reduce((acc, d) => { acc[d] = stack[d] !== undefined ? stack[d] : 0; return acc; }, {});
+                const payoutValue = actualActiveDenoms.reduce((total, d) => total + (initialChips[d] || 0) * d, 0); 
+                autoAddedPlayers.push({ id: newPlayerId, name: `Player ${i + 1}`, buyIn: String(defaultBuyInForAutoAdd.toFixed(2)), chips: initialChips, payoutValue: payoutValue });
+            }
+        }
+        setPlayersPayout(autoAddedPlayers); 
+        setNextPlayerIdPayout(nextId); 
+    }
+  };
+  
+  const uniquePlayerNames = Object.keys(playerStats).sort();
+  const chipSetupPropsFromApp = { onSetupComplete: handleSetupComplete, activeDenominationsApp }; 
+  const payoutScreenPropsFromApp = {
+      activeDenominationsApp, 
+      editablePlayerStackApp, 
+      globalNumPlayersSetup, 
+      globalBuyInAmountSetup, 
+      playersPayout, 
+      setPlayersPayout, 
+      nextPlayerIdPayout, 
+      setNextPlayerIdPayout,
+      addSessionToHistory 
+  };
+  const historyScreenPropsFromApp = { sessionHistory, playerStats, uniquePlayerNames }; 
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="light-content" backgroundColor={styles.header.backgroundColor} />
+      <View style={styles.header}><Text style={styles.headerTitle}>Poker Night Pro <Ionicons name="logo-react" size={28} color="#FACC15" /></Text></View>
+      <NavigationContainer>
+        <Tab.Navigator 
+            initialRouteName="Chip Setup" 
+            screenOptions={{ 
+                tabBarStyle: styles.mockTabBar, 
+                tabBarActiveTintColor: '#FACC15', // Background of active tab button
+                tabBarInactiveTintColor: '#A0AEC0', // Text color of inactive tab
+                tabBarIndicatorStyle: { backgroundColor: '#FACC15', height: 3 }, 
+                tabBarLabelStyle: { 
+                    fontSize: '15px', // Updated font size
+                    fontWeight: '600', 
+                    textTransform: 'none',
+                    fontFamily: '"Inter", sans-serif', // Explicitly set font family
+                    letterSpacing: '0.3px' // Added letter spacing
+                }
+            }}
+        >
+          <Tab.Screen name="Chip Setup" propsFromApp={chipSetupPropsFromApp}>{(navProps) => <ChipSetupScreen {...navProps} {...chipSetupPropsFromApp} />}</Tab.Screen>
+          <Tab.Screen name="Payouts" propsFromApp={payoutScreenPropsFromApp}>{(navProps) => <PayoutsScreen {...navProps} {...payoutScreenPropsFromApp} />}</Tab.Screen>
+          <Tab.Screen name="History" propsFromApp={historyScreenPropsFromApp} options={{title: "History & Stats"}}>{(navProps) => <HistoryStatsScreen {...navProps} {...historyScreenPropsFromApp} />}</Tab.Screen>
+        </Tab.Navigator>
+      </NavigationContainer>
+      <View style={styles.footer}><Text style={styles.footerText}>May the flop be with you! User ID: {currentUserIdGlobal || 'Initializing...'}</Text></View>
+    </SafeAreaView>
+  );
+};
+
+const colors = {
+  background: '#1A202C', 
+  surface: '#047857', 
+  primary: '#F59E0B', 
+  secondary: '#065F46', 
+  textPrimary: '#F7FAFC', 
+  textSecondary: '#A0AEC0', 
+  textAccent: '#FCD34D', 
+  error: '#E53E3E', 
+  success: '#48BB78', 
+  inputControlBg: '#059669', 
+  inputControlBorder: '#F59E0B', 
+  inputText: '#FFFFFF', 
+  headerBg: '#064E3B', 
+  tabBarBg: '#065F46', 
+  tabActiveText: '#FFFFFF', 
+  tabInactiveText: '#A0AEC0', 
+  chipBorder: '#4A5568', 
+  graphGrid: 'rgba(255, 255, 255, 0.1)', 
+  graphAxis: 'rgba(255, 255, 255, 0.3)', 
+};
+
+const styles = StyleSheet.create({
+  flexGrow: { flexGrow: 1, display: 'flex', flexDirection: 'column' }, 
+  safeArea: { display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: colors.background, fontFamily: '"Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif'},
+  header: { backgroundColor: colors.headerBg, padding: '16px 20px', alignItems: 'center', justifyContent: 'center', borderBottom: `3px solid ${colors.primary}`, boxShadow: '0 2px 10px rgba(0,0,0,0.2)'},
+  headerTitle: { fontSize: '28px', fontWeight: '700', color: colors.primary, fontFamily: '"Playfair Display", serif', letterSpacing: '0.5px'},
+  tabContentContainer: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', backgroundColor: colors.surface }, 
+  screenContainer: { flex: 1, backgroundColor: colors.surface },
+  screenContainerWithStickyFooter: { display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: colors.surface, overflow: 'hidden' },
+  payoutsScrollableContent: { flex: 1 },
+  stickyFooterTotalsSection: { padding: '16px 20px', paddingTop: '20px', borderTopWidth: '2px', borderTopColor: colors.primary, backgroundColor: colors.surface, boxShadow: '0 -2px 8px rgba(0,0,0,0.1)'},
+  scrollContentContainer: { padding: '24px' },
+  footer: { padding: '15px 0', backgroundColor: colors.headerBg, textAlign: 'center', borderTop: `1px solid ${colors.primary}`},
+  footerText: { fontSize: '14px', color: colors.textSecondary },
+  screenTitle: { fontSize: '26px', fontWeight: '700', color: colors.textAccent, textAlign: 'center', margin: '10px 0 25px 0' },
+  sectionTitle: { fontSize: '22px', fontWeight: '700', color: colors.textAccent, marginBottom: '20px', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center'},
+  subSectionTitle: { fontSize: '20px', fontWeight: '600', color: colors.textAccent, marginBottom: '18px', display: 'flex', alignItems: 'center'},
+  subSectionTitleSmall: { fontSize: '18px', fontWeight: '600', color: colors.textAccent, marginTop: '20px', marginBottom: '12px'},
+  label: {
+    fontSize: '18px',
+    color: colors.textAccent,
+    marginBottom: '12px',
+    fontWeight: '600',
+    display: 'block', 
+  },
+  infoText: { fontSize: '16px', color: colors.textSecondary, textAlign: 'center', fontStyle: 'italic', marginTop: '10px', padding: '5px'},
+  infoTextGraph: { fontSize: '14px', color: colors.textSecondary, textAlign: 'center', fontStyle: 'italic', padding: '20px'},
+  errorMessage: { color: colors.error, textAlign: 'center', margin: '20px 0', fontSize: '16px', padding: '15px', backgroundColor: 'rgba(229, 62, 62, 0.1)', borderRadius: '10px', border: `1px solid ${colors.error}`},
+  section: { marginBottom: '30px', padding: '24px', backgroundColor: colors.secondary, borderRadius: '16px', border: `1px solid ${colors.inputControlBorder}`, boxShadow: '0 6px 12px rgba(0,0,0,0.1)'},
+  subSection: { marginTop: '25px', paddingTop: '20px', borderTop: `1px solid rgba(245, 158, 11, 0.3)`}, 
+  resultsSection: { marginTop: '30px', paddingTop: '25px', borderTop: `2px solid ${colors.primary}`},
+  inputGroup: { marginBottom: '20px' }, 
+  numberInputContainer: { display: 'flex', flexDirection: 'row', alignItems: 'center', backgroundColor: colors.inputControlBg, borderRadius: '12px', border: `1px solid ${colors.inputControlBorder}`, height: '52px'},
+  numberInputButton: { backgroundColor: colors.primary, width: '52px', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', border: 'none', cursor: 'pointer', borderRadius: '10px'}, 
+  numberInput: { flex: 1, color: colors.inputText, fontSize: '18px', padding: '0 10px', height: '100%', border: 'none', backgroundColor: 'transparent', textAlign: 'center', boxSizing: 'border-box', width: 'calc(100% - 104px)', outline: 'none'},
+  primaryButton: { backgroundColor: colors.primary, padding: '18px', borderRadius: '12px', textAlign: 'center', marginTop: '20px', boxShadow: '0 4px 8px rgba(0,0,0,0.2)', border: 'none', cursor: 'pointer', width: '100%', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background-color 0.2s ease-in-out, transform 0.1s ease'},
+  primaryButtonText: { color: colors.headerBg, fontSize: '18px', fontWeight: 'bold', marginLeft: '10px'}, 
+  secondaryButton: { backgroundColor: colors.inputControlBg, padding: '12px 18px', borderRadius: '10px', textAlign: 'center', marginTop: '20px', border: `1px solid ${colors.primary}`, cursor: 'pointer', transition: 'background-color 0.2s ease-in-out'},
+  secondaryButtonText: { color: colors.primary, fontSize: '16px', fontWeight: '600'},
+  totalPotDisplay: { textAlign: 'center', padding: '18px 0', backgroundColor: colors.inputControlBg, borderRadius: '12px', margin: '20px 0', border: `1px solid ${colors.primary}`},
+  totalPotText: { fontSize: '20px', fontWeight: '600', color: colors.textAccent },
+  totalPotValue: { color: colors.textPrimary, fontWeight: '700' },
+  chipAdjustmentRow: { 
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center', // Centered the items in the row
+    marginVertical: '10px', // Matched PayoutsScreen vertical margin
+    paddingBottom: '10px', // Added padding for the border
+    borderBottom: `1px solid rgba(245, 158, 11, 0.2)`,
+  },
+  setupNumberInputCell: { // New style for ChipSetupScreen NumberInputControl wrapper
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    // width: '180px', // Example: You can set a fixed width if needed
+  },
+  summaryText: { fontSize: '17px', color: colors.textPrimary, marginTop: '10px', fontWeight: '600'},
+  blindsSuggestionContainer: { marginBottom: '30px', padding: '20px', backgroundColor: colors.inputControlBg, borderRadius: '12px', border: `1px solid ${colors.primary}`},
+  blindsDisplay: { textAlign: 'center', padding: '10px', borderRadius: '10px', marginTop: '5px', display: 'flex', flexDirection: 'column', alignItems: 'center'},
+  blindsTextSmall: { fontSize: '18px', color: colors.textAccent, fontWeight: '500', margin: '4px 0', marginBottom: '8px'},
+  blindsTextBig: { fontSize: '22px', color: colors.textAccent, fontWeight: '700', margin: '4px 0'},
+  blindAmountText: { color: colors.textPrimary, fontWeight: 'bold'},
+  totalChipsNeededGrid: { display: 'flex', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-around', alignItems: 'flex-start', padding: '10px 0px', backgroundColor: colors.inputControlBg, borderRadius: '12px', border: `1px solid ${colors.primary}`, marginTop: '10px'},
+  totalChipItem: { display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px', padding: '5px', minWidth: '100px'},
+  totalChipCountText: { color: colors.textPrimary, fontSize: '14px', fontWeight: '500', marginTop: '8px', textAlign: 'center'},
+  chipContainer: { display: 'flex', flexDirection: 'row', alignItems: 'center', margin: '5px 0'}, 
+  chipOuter: { display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 3px 6px rgba(0,0,0,0.2)'}, 
+  chipInnerRing: { display: 'flex', justifyContent: 'center', alignItems: 'center'}, 
+  chipTextValue: { fontWeight: '700', fontSize: '15px', textAlign: 'center'}, 
+  chipCountText: { color: colors.textPrimary, fontSize: '16px', marginLeft: '15px', fontWeight: '500'}, 
+  mockTabBar: { display: 'flex', flexDirection: 'row', backgroundColor: colors.tabBarBg, borderBottom: `2px solid ${colors.primary}`},
+  mockTabButton: { flex: 1, padding: '14px 5px', alignItems: 'center', justifyContent: 'center', borderBottomWidth: '3px', borderBottomColor: 'transparent', cursor: 'pointer', transition: 'background-color 0.2s ease'},
+  mockTabButtonText: { fontSize: '15px', fontWeight: '600', textTransform: 'none', textAlign: 'center'}, 
+  payoutInstructionsContainer: { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 20, backgroundColor: colors.secondary, borderRadius: 10, marginVertical: 20, textAlign: 'center'},
+  payoutInstructionsText: { color: colors.textAccent, fontSize: 16, textAlign: 'center', marginBottom: 15},
+  playerEntriesContainer: { marginVertical: 20 },
+  playerEntry: { backgroundColor: colors.secondary, padding: 20, borderRadius: '12px', marginBottom: 25, borderWidth: 1, borderColor: colors.primary, boxShadow: '0 3px 7px rgba(0,0,0,0.1)'},
+  playerHeader: { display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20},
+  playerNameInput: { flex: 1, fontSize: '22px', fontWeight: '600', color: colors.textAccent, borderBottomWidth: '2px', borderBottomColor: colors.primary, paddingBottom: '6px', marginRight: '15px', backgroundColor: 'transparent', border:'none', borderBottom: `2px solid ${colors.primary}`, outline:'none'},
+  removePlayerButton: { backgroundColor: colors.error, padding: '10px 14px', borderRadius: '10px', justifyContent: 'center', alignItems: 'center', border:'none'},
+  chipInputRowPayout: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginVertical: '10px'
+  },
+  payoutNumberInputCell: { 
+    height: 90, 
+    display: 'flex',
+    alignItems: 'center',  
+    justifyContent: 'center', 
+  },
+  chipDenomLabelPayout: { color: colors.textAccent, fontSize: '16px', marginRight: '10px', minWidth: '75px', textAlign: 'right'}, 
+  payoutValueText: {
+    fontSize: '20px',
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    textAlign: 'right',
+    marginTop: '25px',
+    paddingTop: '15px',
+    borderTopWidth: '1px',
+    borderTopColor: colors.primary, 
+  },
+  totalsSectionPayout: {}, 
+  totalDisplayItem: { display: 'flex', flexDirection: 'row', justifyContent: 'space-between', paddingVertical: '10px', backgroundColor: colors.inputControlBg, borderRadius: '10px', paddingHorizontal: '18px', marginBottom: '12px', border: `1px solid ${colors.primary}`},
+  totalLabelPayout: { fontSize: '19px', color: colors.textAccent, fontWeight: '600'},
+  totalValuePayout: { fontSize: '19px', color: colors.textPrimary, fontWeight: 'bold'},
+  finalizeButton: { backgroundColor: colors.success, marginTop: '15px'}, 
+  tableVisualizationSection: { marginVertical: 25, paddingVertical: 20, borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(245, 158, 11, 0.2)'},
+  pokerTableContainerMock: { alignItems: 'center', justifyContent: 'center', marginVertical: 20, position: 'relative', display: 'flex'},
+  pokerTableMock: { backgroundColor: '#047857',  borderRadius: '110px / 65px',  borderWidth: '10px', borderColor: '#065F46',  position: 'relative', boxShadow: '0 6px 18px rgba(0,0,0,0.25)', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '0 auto'},
+  pokerTableInnerLineMock: { position: 'absolute', width: 'calc(100% - 45px)', height: 'calc(100% - 45px)', borderRadius: '85px / 45px', border: `2px dashed ${colors.primary}`, top: '22.5px', left: '22.5px', boxSizing: 'border-box'},
+  playerSeatMock: { backgroundColor: colors.primary, position: 'absolute', display: 'flex', justifyContent: 'center', alignItems: 'center', border: `2px solid ${colors.headerBg}`, boxShadow: '0 2px 4px rgba(0,0,0,0.2)', cursor: 'pointer', overflow: 'hidden'},
+  playerSeatTextMock: { color: colors.headerBg, fontSize: '11px', fontWeight: 'bold', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%', padding: '0 2px'},
+  historyEmptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 30,
+    marginTop: 30,
+    backgroundColor: colors.secondary,
+    borderRadius: 10,
+  },
+  historySessionCard: {
+    backgroundColor: colors.secondary,
+    padding: 20,
+    borderRadius: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
+  },
+  historySessionTimestamp: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.textAccent,
+    marginBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(245, 158, 11, 0.3)',
+    paddingBottom: 10,
+  },
+  historySessionSummary: {
+    marginBottom: 15,
+  },
+  historySummaryText: {
+    fontSize: 16,
+    color: colors.textPrimary,
+    marginBottom: 5,
+  },
+  historySummaryValue: {
+    fontWeight: '600',
+    color: colors.textPrimary, 
+  },
+  historyPlayerListTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: colors.textAccent,
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  historyPlayerRow: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(74, 85, 104, 0.3)', 
+  },
+  historyPlayerName: {
+    fontSize: 16,
+    color: colors.textPrimary,
+  },
+  historyPlayerNet: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  historyPlayerNetPositive: {
+    color: colors.success, 
+  },
+  historyPlayerNetNegative: {
+    color: colors.error, 
+  },
+  historyDenominationsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textAccent,
+    marginTop: 15,
+    marginBottom: 8,
+  },
+  historyDenominationsContainer: {
+    display: 'flex',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: '8px', 
+  },
+  playerSelectorContainer: {
+    marginBottom: 30, 
+    padding: '20px',
+    backgroundColor: colors.secondary,
+    borderRadius: '12px', 
+    border: `1px solid ${colors.primary}`,
+    boxShadow: '0 5px 15px rgba(0,0,0,0.1)', 
+  },
+  playerSelectDropdown: {
+    width: '100%',
+    padding: '12px 15px', 
+    fontSize: '16px',
+    backgroundColor: colors.inputControlBg,
+    color: colors.textPrimary,
+    border: `1px solid ${colors.primary}`, 
+    borderRadius: '8px',
+    marginTop: '8px', 
+    cursor: 'pointer',
+    appearance: 'none', 
+    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23${colors.textAccent.substring(1)}'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd' /%3E%3C/svg%3E")`, 
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'right 15px center',
+    backgroundSize: '1.2em',
+  },
+  playerStatsCard: {
+    backgroundColor: colors.secondary,
+    padding: '25px', 
+    borderRadius: '16px', 
+    marginBottom: '30px',
+    border: `1px solid ${colors.primary}`,
+    boxShadow: '0 8px 25px rgba(0,0,0,0.15)', 
+  },
+  playerStatsTitle: {
+    fontSize: '24px', 
+    fontWeight: '700', 
+    color: colors.textAccent,
+    marginBottom: '25px', 
+    display: 'flex',
+    alignItems: 'center',
+    borderBottom: `1px solid ${colors.primary}50`, 
+    paddingBottom: '15px',
+  },
+  playerStatRow: { 
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: '10px', 
+    borderBottom: `1px solid ${colors.graphGrid}`, 
+  },
+  playerStatLabel: {
+    fontSize: '16px',
+    color: colors.textSecondary, 
+    fontWeight: '500',
+  },
+  playerStatValue: {
+    fontSize: '17px',
+    color: colors.textPrimary,
+    fontWeight: '600', 
+  },
+  playerStatsSubtitle: {
+    fontSize: '20px', 
+    fontWeight: '600',
+    color: colors.textAccent,
+    marginTop: '30px', 
+    marginBottom: '15px',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  playerSessionLogContainer: { 
+    marginTop: '10px',
+  },
+  playerSessionItem: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '12px 10px', 
+    borderBottomWidth: 1,
+    borderBottomColor: colors.graphGrid, 
+    transition: 'background-color 0.2s ease',
+  },
+  playerSessionDate: {
+    fontSize: '15px',
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  playerSessionNet: {
+    fontSize: '16px',
+    fontWeight: '600', 
+  },
+  graphContainer: {
+    marginTop: '20px',
+    marginBottom: '20px',
+    padding: '15px', 
+    backgroundColor: `${colors.headerBg}99`, 
+    borderRadius: '12px',
+    boxShadow: 'inset 0 0 10px rgba(0,0,0,0.2)', 
+    width: '100%', 
+    boxSizing: 'border-box',
+  },
+  loadingContainer: { display: 'flex', flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background},
+  loadingText: { fontSize: '18px', color: colors.textPrimary },
+});
+
+export default App;
